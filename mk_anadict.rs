@@ -4,10 +4,6 @@ use io::*;
 use result::*;
 use std::map::*;
 
-use core::cmp::Eq;
-use hash::Hash;
-use to_bytes::IterBytes;
-
 fn read_lines(reader : Reader) -> ~[@~str] {
     let mut lines : ~[@~str] = ~[];
     while !reader.eof() {
@@ -49,7 +45,6 @@ fn print_dict(writer : Writer, dict : &HashMap<@~str,@[@~str]>) {
         writer.write_char('\n');
     }
 }
-
 
 fn main() {
     match file_reader(&Path("/usr/share/dict/words")) {
