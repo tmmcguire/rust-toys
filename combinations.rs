@@ -39,9 +39,9 @@ extern mod std;
 /// This function gleefully stolen from Python
 /// [`itertools.combinations`](http://docs.python.org/2/library/itertools.html#itertools.combinations).
 pub pure fn each_combination<T>(values : &v/[T], r : uint, fun : &fn(combo : &[&v/T]) -> bool) {
-    let length = values.len();
+    let length          = values.len();
     if r == 0 || r > length { return; }
-    let max_indices0 = length - r;
+    let max_indices0    = length - r;
     let mut indices     = vec::from_fn(r, |i| i);
     let mut combination = vec::from_fn(r, |i| &values[i]);
     loop {
@@ -49,12 +49,13 @@ pub pure fn each_combination<T>(values : &v/[T], r : uint, fun : &fn(combo : &[&
         // Increment the indices
         let mut i = r - 1;
         indices[i] += 1;
-        while indices[i] > max_indices0 + i && i != 0 {
+        while indices[i] > max_indices0 + i && i > 0 {
             // indices[i] now too large; decrement i, increment indices[i]
             // and we'll fix up the following indices later
             i -= 1;
             indices[i] += 1;
         }
+        // Can't fix up 'done'
         if indices[0] > max_indices0 { break; }
         // Fix up the indices and the combination from i to r-1
         combination[i] = &values[indices[i]];
