@@ -41,6 +41,7 @@ extern mod std;
 pub pure fn each_combination<T>(values : &v/[T], r : uint, fun : &fn(combo : &[&v/T]) -> bool) {
     let length = values.len();
     if r == 0 || r > length { return; }
+    let max_indices0 = length - r;
     let mut indices     = vec::from_fn(r, |i| i);
     let mut combination = vec::from_fn(r, |i| &values[i]);
     loop {
@@ -48,13 +49,13 @@ pub pure fn each_combination<T>(values : &v/[T], r : uint, fun : &fn(combo : &[&
         // Increment the indices
         let mut i = r - 1;
         indices[i] += 1;
-        while indices[i] == 1 + length - (r - i) && i != 0 {
+        while indices[i] > max_indices0 + i && i != 0 {
             // indices[i] now too large; decrement i, increment indices[i]
             // and we'll fix up the following indices later
             i -= 1;
             indices[i] += 1;
         }
-        if indices[0] > length - r { break; }
+        if indices[0] > max_indices0 { break; }
         // Fix up the indices and the combination from i to r-1
         combination[i] = &values[indices[i]];
         for uint::range(i + 1, r) |i| {
@@ -130,13 +131,13 @@ pub pure fn each_permutation<T>(values : &v/[T], fun : &fn(perm : &[&v/T]) -> bo
         return;
     }
     let mut indices = vec::from_fn(length, |i| i);
-    loop outer: {
+    loop {
         if !fun(permutation) { return; }
         // find largest k such that indices[k] < indices[k+1]
         // if no such k exists, all permutations have been generated
         let mut k = length - 2;
         while indices[k] >= indices[k+1] {
-            if k == 0 && indices[0] > indices[1] { break outer; }
+            if k == 0 && indices[0] > indices[1] { return; }
             k -= 1;
         }
         // find largest l such that indices[k] < indices[l]
