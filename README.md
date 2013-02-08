@@ -15,3 +15,11 @@ from `itertools`, in a general combinations and permutations module.
 * **anagrams4.rs** A hashmap-based version of the anagram finder.
 
 * **anagrams5.rs** Old-school, binary search version of the anagram finder.
+
+Python reference
+----------------
+
+* **mk_anadict.py**
+* **presser_one.py**
+* **presser_three.py**
+* **presser_two.py**
