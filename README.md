@@ -11,3 +11,7 @@ from `itertools`, in a general combinations and permutations module.
 * **permtest.rs** Fidding with `each_permutation`.
 
 * **bisect.rs** A replacement for Python's `bisect` module: binary search algorithms.
+
+* **anagrams4.rs** A hashmap-based version of the anagram finder.
+
+* **anagrams5.rs** Old-school, binary search version of the anagram finder.
