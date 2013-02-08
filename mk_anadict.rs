@@ -6,8 +6,8 @@ use std::map::*;
 
 fn read_lines(reader : Reader) -> ~[@~str] {
     let mut lines : ~[@~str] = ~[];
-    while !reader.eof() {
-        let line = str::trim(reader.read_line());
+    for reader.each_line |line| {
+        let line = str::trim(line);
         vec::push(&mut lines, @line);
     }
     return lines;
