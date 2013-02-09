@@ -12,9 +12,9 @@ from `itertools`, in a general combinations and permutations module.
 
 * **bisect.rs** A replacement for Python's `bisect` module: binary search algorithms.
 
-* **anagrams4.rs** A hashmap-based version of the anagram finder.
+* **anagrams-hashmap.rs** A hashmap-based version of the anagram finder.
 
-* **anagrams5.rs** Old-school, binary search version of the anagram finder.
+* **anagrams-vectors.rs** Old-school, binary search version of the anagram finder.
 
 Python reference
 ----------------
