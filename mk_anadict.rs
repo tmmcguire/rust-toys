@@ -22,31 +22,25 @@ fn read_dict(reader : Reader) -> ~HashMap<@~str,@[@~str]> {
 
 fn sorted_keys<V:Copy>(dict : &HashMap<@~str,V>) -> ~[@~str] {
     let mut keys = vec::with_capacity(dict.size());
-    for dict.each_key |key| { vec::push(&mut keys, key); }
+    for dict.each_key |key| { keys.push(key); }
     std::sort::quick_sort(keys, |a,b| *a <= *b);
     return keys;
 }
 
 fn print_dict(writer : Writer, dict : &HashMap<@~str,@[@~str]>) {
-    for vec::each(sorted_keys(dict)) |key| {
-        writer.write_str(**key);
-        for vec::each(dict.get(*key)) |value| {
-            writer.write_char(' ');
-            writer.write_str(**value);
-        }
-        writer.write_char('\n');
+    for sorted_keys(dict).each |key| {
+        let line = str::connect(dict.get(*key).map(|v| **v), " ");
+        writer.write_str(fmt!("%s %s\n", **key, line));
     }
 }
 
 fn main() {
-    match file_reader(&Path("/usr/share/dict/words")) {
-        Ok(reader) => {
-            let dict = read_dict(reader);
-            match file_writer(&Path("anadict-rust.txt"), [Create,Truncate]) {
-                Ok(writer) => { print_dict(writer, dict); }
-                Err(msg)   => { fail msg; }
-            }
+    match (file_reader(&Path("/usr/share/dict/words")),
+           file_writer(&Path("anadict-rust.txt"), [Create,Truncate])) {
+        (Ok(reader), Ok(writer)) => {
+            print_dict(writer, read_dict(reader));
         }
-        Err(msg) => { fail msg; }
+        (Err(msg), _) => { fail msg; }
+        (_, Err(msg)) => {fail msg; }
     }
 }
