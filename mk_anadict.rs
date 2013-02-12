@@ -4,25 +4,17 @@ use io::*;
 use result::*;
 use std::map::*;
 
-fn read_lines(reader : Reader) -> ~[@~str] {
-    let mut lines : ~[@~str] = ~[];
+fn read_dict(reader : Reader) -> ~HashMap<@~str,@[@~str]> {
+    let map = ~HashMap();
     for reader.each_line |line| {
-        let line = str::trim(line);
-        vec::push(&mut lines, @line);
-    }
-    return lines;
-}
-
-fn lines_to_dict(lines : &[@~str]) -> ~HashMap<@~str,@[@~str]> {
-    let map = ~HashMap::<@~str,@[@~str]>();
-    for vec::each(lines) |line| {
-        let len = str::len(**line);
+        let line = line.trim();
+        let length = line.len();
         // Original is using pre-strip() line for comparisons
-        if len >= 2 && len < 19 && str::all(**line, |ch| (char::is_ascii(ch) && char::is_lowercase(ch))) {
-            let mut chars = str::chars(**line);
+        if length >= 2 && length < 19 && line.all(|ch| (char::is_ascii(ch) && char::is_lowercase(ch))) {
+            let mut chars = str::chars(line);
             std::sort::quick_sort(chars, |a,b| *a <= *b);
             let key = str::from_chars(chars);
-            map.update(@key, @[*line], |old,nw| at_vec::append(old,nw));
+            map.update(@key, @[@line], |old,nw| at_vec::append(old,nw));
         }
     }
     return map;
@@ -49,13 +41,10 @@ fn print_dict(writer : Writer, dict : &HashMap<@~str,@[@~str]>) {
 fn main() {
     match file_reader(&Path("/usr/share/dict/words")) {
         Ok(reader) => {
-            let lines = read_lines(reader);
-            let dict = lines_to_dict(lines);
+            let dict = read_dict(reader);
             match file_writer(&Path("anadict-rust.txt"), [Create,Truncate]) {
-                Ok(writer) => {
-                    print_dict(writer, dict);
-                }
-                Err(msg) => { fail msg; }
+                Ok(writer) => { print_dict(writer, dict); }
+                Err(msg)   => { fail msg; }
             }
         }
         Err(msg) => { fail msg; }
