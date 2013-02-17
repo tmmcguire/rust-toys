@@ -22,9 +22,9 @@ fn load_dictionary() -> (~[~[char]],~[~[~str]]) {
             let mut keys = ~[];
             let mut values = ~[];
             for reader.each_line() |line| {
-                let words = str::split_str(line, " ");
-                vec::push(&mut keys, str::chars(words[0]));
-                vec::push(&mut values, vec::from_fn(words.len() - 1, |i| copy words[i+1]));
+                let words = line.split_str(" ");
+                keys.push( str::chars(words[0]) );
+                values.push( vec::from_fn(words.len() - 1, |i| copy words[i+1]) );
             }
             return (keys,values);
         }

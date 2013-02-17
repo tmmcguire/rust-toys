@@ -11,7 +11,7 @@ fn load_dictionary() -> ~HashMap<@~[char],@~[@~str]> {
         Ok(reader) => {
             let mut map = ~HashMap();
             for reader.each_line() |line| {
-                let words = str::split_str(line, " ");
+                let words = line.split_str(" ");
                 map.insert(@str::chars(words[0]), @vec::from_fn(words.len() - 1, |i| @copy words[i+1]));
             }
             return map;
