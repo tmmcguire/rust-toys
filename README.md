@@ -5,8 +5,7 @@ Fun and exciting explorations of [Rust](http://www.rust-lang.org).
 
 * **mk_anadict.rs** Part of a translation of [Creating and Optimizing a Letterpress Cheating Program in Python](http://www.jeffknupp.com/blog/2013/01/04/creating-and-optimizing-a-letterpress-cheating-program-in-python/).
 
-* **combinations.rs** A replacement for Python's `combinations` function
-from `itertools`, in a general combinations and permutations module.
+* **combinations.rs** A replacement for Python's `combinations` function from `itertools`, in a general combinations and permutations module.
 
 * **permtest.rs** Fidding with `each_permutation`.
 
@@ -16,10 +15,16 @@ from `itertools`, in a general combinations and permutations module.
 
 * **anagrams-vectors.rs** Old-school, binary search version of the anagram finder.
 
-Python reference
-----------------
+Python alternatives
+-------------------
 
 * **mk_anadict.py**
 * **presser_one.py**
 * **presser_three.py**
 * **presser_two.py**
+
+C alternatives
+--------------
+
+* **anagrams-hash.c**
+* **anagrams-vectors.c**

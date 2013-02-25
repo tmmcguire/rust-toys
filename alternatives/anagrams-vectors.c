@@ -39,7 +39,7 @@ bisect_left_lines(struct v_line *lines, char *letters, int llength, int lo, int 
 void
 combinations(struct dictionary *dict, char *letters, int llen, int *set) {
   int i, r;
-  for (r = 2; r < llen; ++r) {
+  for (r = 2; r <= llen; ++r) {
     int max_indices0 = llen - r;
     int *indices = alloca(sizeof(int) * r);
     for (i = 0; i < r; ++i) { indices[i] = i; }

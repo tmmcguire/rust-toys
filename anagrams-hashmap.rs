@@ -29,7 +29,7 @@ fn main() {
     std::sort::quick_sort(letters, |a,b| *a <= *b);
     let dictionary = load_dictionary();
     let mut set : Set<@~str> = HashMap();
-    for uint::range(2,letters.len()) |i| {
+    for uint::range(2,letters.len() + 1) |i| {
         for combinations::each_combination_ref(letters,i) |combo| {
             let ana = @vec::from_fn(combo.len(), |i| *combo[i]);
             match dictionary.find(ana) {

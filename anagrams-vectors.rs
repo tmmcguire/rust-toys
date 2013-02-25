@@ -42,7 +42,7 @@ fn main() {
     let (keys,values) = load_dictionary();
     let klen = keys.len();
     let mut set : Set<@~str> = HashMap();
-    for uint::range(2,letters.len()) |i| {
+    for uint::range(2,letters.len() + 1) |i| {
         for combinations::each_combination(letters,i) |combo| {
             let j = bisect::bisect_left(keys, vec::from_slice(combo), 0, klen);
             if j < klen && chars_eq(keys[j], combo) {
