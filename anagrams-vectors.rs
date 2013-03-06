@@ -3,56 +3,52 @@ extern mod std;
 mod combinations;
 mod bisect;
 
-use io::*;
-use std::map::*;
-use cmp::{Eq, Ord};
+use core::io::*;
+use core::hashmap::linear::*;
+use core::cmp::{Eq, Ord};
 
-impl char : Ord {
-    #[inline(always)] pure fn lt(&self, other: &char) -> bool { *self <  *other }
-    #[inline(always)] pure fn le(&self, other: &char) -> bool { *self <= *other }
-    #[inline(always)] pure fn gt(&self, other: &char) -> bool { *self >  *other }
-    #[inline(always)] pure fn ge(&self, other: &char) -> bool { *self >= *other }
-}
-
-fn chars_eq(l : &[char], r : &[char]) -> bool { l == r }
-
-fn load_dictionary() -> (~[~[char]],~[~[~str]]) {
+fn load_dictionary() -> (~[~[int]],~[~[~str]]) {
     match file_reader(&Path("anadict-rust.txt")) {
         Ok(reader) => {
             let mut keys = ~[];
             let mut values = ~[];
             for reader.each_line() |line| {
                 let words = line.split_str(" ");
-                keys.push( str::chars(words[0]) );
+                keys.push( vec::from_fn(words[0].len(), |i| words[0][i] as int) );
                 values.push( vec::from_fn(words.len() - 1, |i| copy words[i+1]) );
             }
             return (keys,values);
         }
-        Err(msg) => { fail msg; }
+        Err(msg) => { fail!(msg); }
     }
+}
+
+fn get_letters(s : &str) -> ~[int] {
+    let mut t = str::chars(s);
+    std::sort::quick_sort(t, |a,b| *a <= *b);
+    return vec::from_fn(t.len(), |i| t[i] as int);
 }
 
 fn main() {
     let args = os::args();
     if args.len() < 2 {
-        fail ~"Usage: anagrams letters";
+        fail!(~"Usage: anagrams letters");
     }
-    let mut letters = str::chars(args[1]);
-    std::sort::quick_sort(letters, |a,b| *a <= *b);
+    let letters = get_letters(args[1]);
     let (keys,values) = load_dictionary();
     let klen = keys.len();
-    let mut set : Set<@~str> = HashMap();
+    let mut set = LinearSet::new();
     for uint::range(2,letters.len() + 1) |i| {
+        let mut key = vec::from_elem(i, 0);
         for combinations::each_combination(letters,i) |combo| {
-            let j = bisect::bisect_left(keys, vec::from_slice(combo), 0, klen);
-            if j < klen && chars_eq(keys[j], combo) {
+            for uint::range(0,i) |j| { key[j] = combo[j]; }
+            let j = bisect::bisect_left_ref(keys, &key, 0, klen);
+            if j < klen && keys[j] == key {
                 for values[j].each |word| {
-                    set_add(set, @copy *word);
+                    set.insert(copy *word);
                 }
             }
         }
     }
-    let result = vec_from_set(set);
-//    println(fmt!("%?", result));
-    println(fmt!("%u", result.len()));
+    println(fmt!("%u", set.len()));
 }
