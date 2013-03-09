@@ -111,7 +111,7 @@ pub pure fn each_combination_ref<T>(values : &v/[T], r : uint, fun : &fn(combo :
 ///
 /// Behavior is undefined if `start` or `end` do not represent valid
 /// positions in `v`.
-pub fn reverse_part<T>(v : &[mut T], start : uint, end : uint) {
+pub fn reverse_part<T>(v : &mut [T], start : uint, end : uint) {
     let mut i = start;
     let mut j = end - 1;
     while i < j {
