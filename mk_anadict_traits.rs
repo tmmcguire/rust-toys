@@ -13,8 +13,8 @@ trait SortedKeys<K : Ord> {
 
 impl<K : Hash + IterBytes + Eq + Ord, V> SortedKeys<K> for LinearMap<K,V> {
 
-    fn each_key_sorted(&self, blk : &fn(key : &self/K) -> bool) {
-        let mut keys : ~[&self/K] = vec::with_capacity(self.len());
+    fn each_key_sorted(&self, blk : &fn(key : &'self K) -> bool) {
+        let mut keys : ~[&'self K] = vec::with_capacity(self.len());
         for self.each |&(k,_)| { keys.push(k); }
         std::sort::quick_sort(keys, |a,b| *a <= *b);
         for keys.each |&k| { if !blk(k) { break; } }
@@ -26,7 +26,7 @@ trait DictReader {
     fn read_dict(&self) -> ~LinearMap<~str,~[~str]>;
 }
 
-impl DictReader for Reader {
+impl DictReader for @Reader {
 
     fn read_dict(&self) -> ~LinearMap<~str,~[~str]> {
         let mut map = ~LinearMap::new();
@@ -37,7 +37,7 @@ impl DictReader for Reader {
             if length >= 2 && length < 19
                 && line.all(|ch| (char::is_ascii(ch)
                                   && char::is_lowercase(ch))) {
-                let mut chars = str::chars(line);
+                let mut chars = str::to_chars(line);
                 std::sort::quick_sort(chars, |a,b| *a <= *b);
                 let key = str::from_chars(chars);
 
@@ -49,7 +49,7 @@ impl DictReader for Reader {
                     None => { ~[] }
                     Some(old) => { old }
                 };
-                value.push(line);
+                value.push(line.to_owned());
                 map.insert(key,value);
             }
         }
@@ -62,7 +62,7 @@ trait DictWriter {
     fn write_dict(&self, dict : &LinearMap<~str,~[~str]>);
 }
 
-impl DictWriter for Writer {
+impl DictWriter for @Writer {
 
     fn write_dict(&self, dict : &LinearMap<~str,~[~str]>) {
         for dict.each_key_sorted() |key| {

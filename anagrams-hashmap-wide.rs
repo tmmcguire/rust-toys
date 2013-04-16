@@ -1,12 +1,12 @@
 extern mod std;
 
-mod combinations;
-mod bisect;
-
 use core::comm::*;
 use core::io::*;
 use core::hashmap::linear::*;
-use core::task::*;
+
+mod combinations;
+mod bisect;
+mod misc;
 
 fn load_dictionaries(width : uint) -> ~[~LinearMap<~[int],~[~str]>] {
     match file_reader(&Path("anadict-rust.txt")) {
@@ -14,8 +14,8 @@ fn load_dictionaries(width : uint) -> ~[~LinearMap<~[int],~[~str]>] {
             let mut maps = vec::from_fn(width, |_| ~LinearMap::new());
             let mut t = 0;
             for reader.each_line |line| {
-                let words = line.split_str(" ");
-                let key = str::chars(words[0]);
+                let words = misc::split_words(line);
+                let key = str::to_chars(words[0]);
                 maps[t].insert(vec::from_fn(key.len(), |i| key[i] as int),
                                vec::from_fn(words.len() - 1, |i| copy words[i+1]));
                 t = (t + 1) % width;
@@ -27,7 +27,7 @@ fn load_dictionaries(width : uint) -> ~[~LinearMap<~[int],~[~str]>] {
 }
 
 fn get_letters(s : &str) -> ~[int] {
-    let mut t = str::chars(s);
+    let mut t = str::to_chars(s);
     std::sort::quick_sort(t, |a,b| *a <= *b);
     return vec::from_fn(t.len(), |i| t[i] as int);
 }

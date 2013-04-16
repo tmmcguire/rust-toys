@@ -1,13 +1,12 @@
 extern mod std;
 
-mod combinations;
-mod bisect;
+extern mod combinations;
+extern mod bisect;
+extern mod misc;
 
 use core::comm::*;
 use core::io::*;
 use core::hashmap::linear::*;
-use core::cmp::{Eq, Ord};
-use core::task::*;
 
 struct kv_pair {
     keys   : ~[~[int]],
@@ -22,7 +21,7 @@ fn load_dictionary(width : uint) -> ~[kv_pair] {
                                          |_| kv_pair{keys   : ~[],
                                                      values : ~[]});
             for reader.each_line() |line| {
-                let words = line.split_str(" ");
+                let words = misc::split_words(line);
                 pairs[t].keys.push(
                     vec::from_fn(words[0].len(), |i| words[0][i] as int)
                 );
@@ -38,7 +37,7 @@ fn load_dictionary(width : uint) -> ~[kv_pair] {
 }
 
 fn get_letters(s : &str) -> ~[int] {
-    let mut t = str::chars(s);
+    let mut t = str::to_chars(s);
     std::sort::quick_sort(t, |a,b| *a <= *b);
     return vec::from_fn(t.len(), |i| t[i] as int);
 }

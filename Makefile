@@ -26,4 +26,4 @@ clean :
 	rm -f $(PROGS) results
 
 % : %.rs
-	rustc -O $<
+	rustc -L . -O $<
