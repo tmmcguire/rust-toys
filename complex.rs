@@ -1,4 +1,3 @@
-use core::ops::*;
 use core::num::NumCast;
 
 struct Complex {
@@ -7,8 +6,8 @@ struct Complex {
 }
 
 impl Complex {
-    fn conjugate(&self) -> Complex { Complex { r : self.r, i : -self.i } }
-    fn magnitude(&self) -> float { core::float::sqrt( self.r * self.r + self.i * self.i ) }
+    fn conjugate(&self) -> Complex { Complex { i : -self.i, .. *self } }
+    fn magnitude(&self) -> float { float::sqrt( self.r * self.r + self.i * self.i ) }
 }
 
 impl ToStr for Complex {
