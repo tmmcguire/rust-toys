@@ -9,7 +9,7 @@ use core::io::*;
 use core::hashmap::linear::*;
 
 struct kv_pair {
-    keys   : ~[~[int]],
+    keys   : ~[~[u8]],
     values : ~[~[~str]]
 }
 
@@ -23,7 +23,7 @@ fn load_dictionary(width : uint) -> ~[kv_pair] {
             for reader.each_line() |line| {
                 let words = misc::split_words(line);
                 pairs[t].keys.push(
-                    vec::from_fn(words[0].len(), |i| words[0][i] as int)
+                    vec::from_fn(words[0].len(), |i| words[0][i] as u8)
                 );
                 pairs[t].values.push(
                     vec::from_fn(words.len() - 1, |i| copy words[i+1])
@@ -36,19 +36,19 @@ fn load_dictionary(width : uint) -> ~[kv_pair] {
     }
 }
 
-fn get_letters(s : &str) -> ~[int] {
+fn get_letters(s : &str) -> ~[u8] {
     let mut t = str::to_chars(s);
     std::sort::quick_sort(t, |a,b| *a <= *b);
-    return vec::from_fn(t.len(), |i| t[i] as int);
+    return vec::from_fn(t.len(), |i| t[i] as u8);
 }
 
-fn search(argument : &[int], keys : &[~[int]], values : &[~[~str]]) -> ~LinearSet<~str> {
+fn search(argument : &[u8], keys : &[~[u8]], values : &[~[~str]]) -> ~LinearSet<~str> {
     let klen = keys.len();
     let mut set = ~LinearSet::new();
     for uint::range(2, argument.len() + 1) |i| {
         let mut key = vec::from_elem(i, 0);
         for combinations::each_combination(argument,i) |combo| {
-            for uint::range(0,i) |j| { key[j] = combo[j]; }
+            for combo.eachi |j,&ch| { key[j] = ch; }
             let j = bisect::bisect_left_ref(keys, &key, 0, klen);
             if j < klen && keys[j] == key {
                 for values[j].each |&word| { set.insert(word); }
@@ -79,9 +79,8 @@ fn main() {
         }
     }
     let mut set = ~LinearSet::new();
-    for uint::range(0,width) |_| {
-        let res = response_port.recv();
-        for res.each |&word| { set.insert(word); }
+    for width.times {
+        for response_port.recv().each |&word| { set.insert(word); }
     }
     println(fmt!("%u", set.len()));
 }

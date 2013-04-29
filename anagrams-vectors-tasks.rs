@@ -9,14 +9,14 @@ use core::io::*;
 use core::hashmap::linear::*;
 use core::task::spawn;
 
-fn load_dictionary() -> (~[~[int]],~[~[~str]]) {
+fn load_dictionary() -> (~[~[u8]],~[~[~str]]) {
     match file_reader(&Path("anadict-rust.txt")) {
         Ok(reader) => {
             let mut keys = ~[];
             let mut values = ~[];
             for reader.each_line() |line| {
                 let words = misc::split_words(line);
-                keys.push( vec::from_fn(words[0].len(), |i| words[0][i] as int) );
+                keys.push( vec::from_fn(words[0].len(), |i| words[0][i] as u8) );
                 values.push( vec::from_fn(words.len() - 1, |i| copy words[i+1]) );
             }
             return (keys,values);
@@ -25,15 +25,15 @@ fn load_dictionary() -> (~[~[int]],~[~[~str]]) {
     }
 }
 
-fn get_letters(s : &str) -> ~[int] {
+fn get_letters(s : &str) -> ~[u8] {
     let mut t = str::to_chars(s);
     std::sort::quick_sort(t, |a,b| *a <= *b);
-    return vec::from_fn(t.len(), |i| t[i] as int);
+    return vec::from_fn(t.len(), |i| t[i] as u8);
 }
 
-fn search(keys         : &[~[int]],
+fn search(keys         : &[~[u8]],
           values       : &[~[~str]],
-          request_port : &Port<~[~[int]]>) -> ~LinearSet<~str> {
+          request_port : &Port<~[~[u8]]>) -> ~LinearSet<~str> {
     let klen = keys.len();
     let mut set = ~LinearSet::new();
     loop {
@@ -62,8 +62,8 @@ fn main() {
     let (response_port,response_chan) = stream();
     let response_chan = SharedChan(response_chan);
 
-    let mut request_chans : ~[Chan<~[~[int]]>] = ~[];
-    for uint::range(0, width) |_| {
+    let mut request_chans : ~[Chan<~[~[u8]]>] = ~[];
+    for width.times {
         let (request_port,request_chan) = stream();
         request_chans.push(request_chan);
         // Set up and start worker task
@@ -91,7 +91,7 @@ fn main() {
     for request_chans.each |chan| { chan.send(~[]) };
 
     let mut set : ~LinearSet<~str> = ~LinearSet::new();
-    for uint::range(0,width) |_| {
+    for width.times {
         for response_port.recv().each |&word| { set.insert(word); }
     }
     println(fmt!("%u", set.len()));

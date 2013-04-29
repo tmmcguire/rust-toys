@@ -7,14 +7,14 @@ extern mod misc;
 use core::io::*;
 use core::hashmap::linear::*;
 
-fn load_dictionary() -> (~[~[int]],~[~[~str]]) {
+fn load_dictionary() -> (~[~[u8]],~[~[~str]]) {
     match file_reader(&Path("anadict-rust.txt")) {
         Ok(reader) => {
             let mut keys = ~[];
             let mut values = ~[];
             for reader.each_line() |line| {
                 let words = misc::split_words(line);
-                keys.push( vec::from_fn(words[0].len(), |i| words[0][i] as int) );
+                keys.push( vec::from_fn(words[0].len(), |i| words[0][i] as u8) );
                 values.push( vec::from_fn(words.len() - 1, |i| copy words[i+1]) );
             }
             return (keys,values);
@@ -23,10 +23,10 @@ fn load_dictionary() -> (~[~[int]],~[~[~str]]) {
     }
 }
 
-fn get_letters(s : &str) -> ~[int] {
+fn get_letters(s : &str) -> ~[u8] {
     let mut t = str::to_chars(s);
     std::sort::quick_sort(t, |a,b| *a <= *b);
-    return vec::from_fn(t.len(), |i| t[i] as int);
+    return vec::from_fn(t.len(), |i| t[i] as u8);
 }
 
 fn main() {
@@ -41,11 +41,11 @@ fn main() {
     for uint::range(2,letters.len() + 1) |i| {
         let mut key = vec::from_elem(i, 0);
         for combinations::each_combination(letters,i) |combo| {
-            for uint::range(0,i) |j| { key[j] = combo[j]; }
+            for combo.eachi |j,&ch| { key[j] = ch; }
             let j = bisect::bisect_left_ref(keys, &key, 0, klen);
             if j < klen && keys[j] == key {
                 for values[j].each |word| {
-                    set.insert(copy *word);
+                    set.insert(word);
                 }
             }
         }

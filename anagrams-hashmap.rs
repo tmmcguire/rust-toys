@@ -12,7 +12,7 @@ fn load_dictionary() -> ~LinearMap<~[i8],~[~str]> {
             for reader.each_line |line| {
                 let words = misc::split_words(line);
                 let key = str::to_chars(words[0]);
-                map.insert(vec::from_fn(key.len(), |i| key[i] as i8),
+                map.insert(vec::from_fn(key.len(),       |i| key[i] as i8),
                            vec::from_fn(words.len() - 1, |i| copy words[i+1]));
             }
             return map;
@@ -35,11 +35,10 @@ fn search(letters : &[i8],
     for uint::range(2, letters.len() + 1) |i| {
         let mut key = vec::from_elem(i, 0);
         for combinations::each_combination(letters,i) |combo| {
-            // mapi seems to be significantly slower
-            for uint::range(0,i) |j| { key[j] = combo[j]; }
+            for combo.eachi |j,&ch| { key[j] = ch; }
             match dictionary.find(&key) {
                 Some(ref val) => {
-                    for val.each |word| { set.insert(copy *word); }
+                    for val.each |&word| { set.insert(word); }
                 }
                 None => { }
             }
@@ -55,6 +54,6 @@ fn main() {
     }
     let letters = get_letters(args[1]);
     let dictionary = load_dictionary();
-    let set : ~LinearSet<~str> = search(letters,dictionary);
+    let set = search(letters,dictionary);
     println(fmt!("%u", set.len()));
 }

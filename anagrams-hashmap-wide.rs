@@ -8,7 +8,7 @@ mod combinations;
 mod bisect;
 mod misc;
 
-fn load_dictionaries(width : uint) -> ~[~LinearMap<~[int],~[~str]>] {
+fn load_dictionaries(width : uint) -> ~[~LinearMap<~[u8],~[~str]>] {
     match file_reader(&Path("anadict-rust.txt")) {
         Ok(reader) => {
             let mut maps = vec::from_fn(width, |_| ~LinearMap::new());
@@ -16,7 +16,7 @@ fn load_dictionaries(width : uint) -> ~[~LinearMap<~[int],~[~str]>] {
             for reader.each_line |line| {
                 let words = misc::split_words(line);
                 let key = str::to_chars(words[0]);
-                maps[t].insert(vec::from_fn(key.len(), |i| key[i] as int),
+                maps[t].insert(vec::from_fn(key.len(), |i| key[i] as u8),
                                vec::from_fn(words.len() - 1, |i| copy words[i+1]));
                 t = (t + 1) % width;
             }
@@ -26,20 +26,19 @@ fn load_dictionaries(width : uint) -> ~[~LinearMap<~[int],~[~str]>] {
     }
 }
 
-fn get_letters(s : &str) -> ~[int] {
+fn get_letters(s : &str) -> ~[u8] {
     let mut t = str::to_chars(s);
     std::sort::quick_sort(t, |a,b| *a <= *b);
-    return vec::from_fn(t.len(), |i| t[i] as int);
+    return vec::from_fn(t.len(), |i| t[i] as u8);
 }
 
-fn search(letters : &[int],
-          dictionary : &LinearMap<~[int],~[~str]>) -> ~LinearSet<~str> {
+fn search(letters : &[u8],
+          dictionary : &LinearMap<~[u8],~[~str]>) -> ~LinearSet<~str> {
     let mut set = ~LinearSet::new();
     for uint::range(2, letters.len() + 1) |i| {
         let mut key = vec::from_elem(i, 0);
         for combinations::each_combination(letters,i) |combo| {
-            // mapi seems to be significantly slower
-            for uint::range(0,i) |j| { key[j] = combo[j]; }
+            for combo.eachi |j,&ch| { key[j] = ch; }
             match dictionary.find(&key) {
                 Some(ref val) => {
                     for val.each |word| { set.insert(copy *word); }
@@ -73,7 +72,7 @@ fn main() {
     }
 
     let mut set = ~LinearSet::new();
-    for uint::range(0,width) |_| {
+    for width.times {
         for response_port.recv().each |&word| { set.insert(word); }
     }
     println(fmt!("%u", set.len()));
