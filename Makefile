@@ -14,13 +14,21 @@ results : $(PROGS) $(PYTHON)
 	for j in $(PROGS); do \
 	  echo $$j; \
 	  echo +$$j >> results; \
-	  time ./$$j $(INPUT) >> results 2>&1; \
+          for k in 1 2 3; do \
+	    time ./$$j $(INPUT) >> results 2>&1; \
+          done; \
 	done
 	for j in $(PYTHON); do \
 	  echo $$j; \
 	  echo +$$j >> results; \
-	  time python ./$$j $(INPUT) >> results 2>&1; \
+          for k in 1 2 3; do \
+	    time python ./$$j $(INPUT) >> results 2>&1; \
+          done; \
 	done
+
+elapsed-times : results
+	sed -n -e '/^+/p' -e '/elapsed/s/.* \([^ ]*\)elapsed.*/\1/p' <results > elapsed-times
+	rm results
 
 clean :
 	rm -f $(PROGS) results
