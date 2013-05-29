@@ -2,40 +2,40 @@ use core::num::NumCast;
 
 struct Complex {
     r : float,
-    i : float
+    j : float
 }
 
 impl Complex {
-    fn conjugate(&self) -> Complex { Complex { i : -self.i, .. *self } }
-    fn magnitude(&self) -> float { float::sqrt( self.r * self.r + self.i * self.i ) }
+    fn conjugate(&self) -> Complex { Complex { j : -self.j, .. *self } }
+    fn magnitude(&self) -> float { float::sqrt( self.r * self.r + self.j * self.j ) }
 }
 
 impl ToStr for Complex {
-    fn to_str(&self) -> ~str { fmt!("(%f + %fi)", self.r, self. i) }
+    fn to_str(&self) -> ~str { fmt!("(%f + %fi)", self.r, self.j) }
 }
 
 trait ToComplex { fn to_complex(&self) -> Complex; }
 
 impl ToComplex for float {
-    fn to_complex(&self) -> Complex { Complex { r : *self, i : 0.0f } }
+    fn to_complex(&self) -> Complex { Complex { r : *self, j : 0.0f } }
 }
 
 impl Add<Complex,Complex> for Complex {
     fn add(&self, rhs: &Complex) -> Complex {
-        Complex { r : self.r + rhs.r, i : self.i + rhs.i }
+        Complex { r : self.r + rhs.r, j : self.j + rhs.j }
     }
 }
 
 impl Sub<Complex,Complex> for Complex {
     fn sub(&self, rhs : &Complex) -> Complex {
-        Complex { r : self.r - rhs.r, i : self.i - rhs.i }
+        Complex { r : self.r - rhs.r, j : self.j - rhs.j }
     }
 }
 
 impl Mul<Complex,Complex> for Complex {
     fn mul(&self, rhs : &Complex) -> Complex {
-        Complex { r : (self.r * rhs.r) - (self.i * rhs.i),
-                  i : (self.r * rhs.i) + (self.i * rhs.r) }
+        Complex { r : (self.r * rhs.r) - (self.j * rhs.j),
+                  j : (self.r * rhs.j) + (self.j * rhs.r) }
     }
 }
 
@@ -44,13 +44,13 @@ impl Div<Complex,Complex> for Complex {
         let rhs_conj = rhs.conjugate();
         let num = self * rhs_conj;
         let denom = rhs * rhs_conj;
-        Complex { r : num.r / denom.r, i : num.i / denom.r }
+        Complex { r : num.r / denom.r, j : num.j / denom.r }
     }
 }
 
 // impl Add<float,Complex> for Complex {
 //     fn add(&self, rhs : &float) -> Complex {
-//         Complex { r : self.r + *rhs, i : self.i }
+//         Complex { r : self.r + *rhs, j : self.j }
 //     }
 // }
 
@@ -82,8 +82,8 @@ impl NumCast for Complex {
 }
 
 fn main() {
-    let x = Complex { r : 1.0, i : 0.0 };
-    let y = Complex { r : 3.0, i : 0.0 };
+    let x = Complex { r : 1.0, j : 0.0 };
+    let y = Complex { r : 3.0, j : 0.0 };
     let z = x + y;
     let w = NumCast::from(2);
     println(( y + 3.0f.to_complex()   ).to_str());
@@ -91,6 +91,8 @@ fn main() {
     println(( x * NumCast::from(4)    ).to_str());
     println(( z / w                   ).to_str());
 
-    let n = Complex { r : 0.0, i : 1.0 };
+    let n = Complex { r : 0.0, j : 1.0 };
     println(( n * n                   ).to_str());
 }
+
+// Notes: i => j, suggested by englabenny and dfjkfskjhfshdfjhsdjl on reddit.
