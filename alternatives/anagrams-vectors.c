@@ -83,8 +83,8 @@ int
 main(int argc, char *argv[]) {
   long i, j;
 
-  // open and map anadict-rust.txt
-  int fd = open("anadict-rust.txt", O_RDONLY);
+  // open and map anadict.txt
+  int fd = open("anadict.txt", O_RDONLY);
   struct stat stat_buf;
   if (fstat(fd, &stat_buf) != 0) { 
     fprintf(stderr, "Cannot stat file");
