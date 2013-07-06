@@ -19,7 +19,7 @@ fn duration(tag : &str, start : time::Timespec, end : time::Timespec) {
 pub fn split_words(s : &str) -> ~[~str] { s.word_iter().transform(|w| w.to_owned()).collect() }
 
 fn load_dictionary() -> ~HashMap<~[i8],~[~str]> {
-    match file_reader(&Path("anadict-rust.txt")) {
+    match file_reader(&Path("anadict.txt")) {
         Ok(reader) => {
             let mut map = ~HashMap::new();
             for reader.each_line |line| {

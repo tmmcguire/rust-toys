@@ -77,7 +77,7 @@ impl DictWriter for @Writer {
 
 fn main() {
     match (file_reader(&Path("/usr/share/dict/words")),
-           file_writer(&Path("anadict-rust.txt"), [Create,Truncate])) {
+           file_writer(&Path("anadict.txt"), [Create,Truncate])) {
         (Ok(r),    Ok(w))     => {
             // It's like magic, but not as exciting.
             w.write_dict(r.read_dict());

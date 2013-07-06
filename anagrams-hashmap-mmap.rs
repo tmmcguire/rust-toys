@@ -57,7 +57,7 @@ fn main() {
         fail!(~"Usage: anagrams letters");
     }
     let letters = get_letters(args[1]);
-    do mmap::with_mmap_file_contents("anadict-rust.txt") |buf| {
+    do mmap::with_mmap_file_contents("anadict.txt") |buf| {
         let map = line_map(buf);
         let set = search(letters, &map);
         let mut count = 0;

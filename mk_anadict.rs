@@ -45,7 +45,7 @@ fn print_dict(writer : @Writer, dict : &HashMap<~str,~[~str]>) {
 
 fn main() {
     match (file_reader(&Path("/usr/share/dict/words")),
-           file_writer(&Path("anadict-rust.txt"), [Create,Truncate])) {
+           file_writer(&Path("anadict.txt"), [Create,Truncate])) {
         (Ok(r),    Ok(w))    => { print_dict(w, read_dict(r)); }
         (Err(msg), _)        => { fail!(msg); }
         (_,        Err(msg)) => {fail!(msg); }

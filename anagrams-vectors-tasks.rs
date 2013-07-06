@@ -12,7 +12,7 @@ use std::task::spawn;
 pub fn split_words(s : &str) -> ~[~str] { s.word_iter().transform(|w| w.to_owned()).collect() }
 
 fn load_dictionary() -> (~[~[u8]],~[~[~str]]) {
-    match file_reader(&Path("anadict-rust.txt")) {
+    match file_reader(&Path("anadict.txt")) {
         Ok(reader) => {
             let mut keys = ~[];
             let mut values = ~[];

@@ -11,7 +11,7 @@ mod bisect;
 pub fn split_words(s : &str) -> ~[~str] { s.word_iter().transform(|w| w.to_owned()).collect() }
 
 fn load_dictionaries(width : uint) -> ~[~HashMap<~[u8],~[~str]>] {
-    match file_reader(&Path("anadict-rust.txt")) {
+    match file_reader(&Path("anadict.txt")) {
         Ok(reader) => {
             let mut maps = vec::from_fn(width, |_| ~HashMap::new());
             let mut t = 0;

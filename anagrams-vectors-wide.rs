@@ -16,7 +16,7 @@ struct kv_pair {
 }
 
 fn load_dictionary(width : uint) -> ~[kv_pair] {
-    match file_reader(&Path("anadict-rust.txt")) {
+    match file_reader(&Path("anadict.txt")) {
         Ok(reader) => {
             let mut t = 0;
             let mut pairs = vec::from_fn(width, 
