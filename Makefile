@@ -2,14 +2,25 @@ ALT    = alternatives
 INPUT  = asdwtribnowplfglewhqagnbe
 CC     = gcc -O3
 
+LIBS   = bisect.rs combinations.rs mmap.rs
+
 PROGS  = anagrams-hashmap-wide anagrams-hashmap anagrams-vectors-tasks anagrams-vectors-wide \
-         anagrams-vectors mk_anadict mk_anadict_traits $(ALT)/anagrams-hash $(ALT)/anagrams-vectors
+         anagrams-vectors anagrams-hashmap-mmap \
+         mk_anadict mk_anadict_traits \
+         $(ALT)/anagrams-hash $(ALT)/anagrams-vectors \
+         complex
 
 PYTHON = $(ALT)/mk_anadict.py $(ALT)/presser_one.py $(ALT)/presser_two.py $(ALT)/presser_three.py
 
-all : $(PROGS)
+all : libs $(PROGS)
 
-results : $(PROGS) $(PYTHON)
+libs : $(LIBS)
+	rustc -L. -O --lib bisect.rs
+	rustc -L. -O --lib combinations.rs
+	rustc -L. -O --lib mmap.rs
+	touch libs
+
+results : libs $(PROGS) $(PYTHON)
 	echo > results
 	for j in $(PROGS); do \
 	  echo $$j; \
@@ -31,7 +42,7 @@ elapsed-times : results
 	rm results
 
 clean :
-	rm -f $(PROGS) results
+	rm -f $(PROGS) results lib*
 
 % : %.rs
 	rustc -L . -O $<

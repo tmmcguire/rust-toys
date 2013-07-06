@@ -1,18 +1,19 @@
-extern mod std;
+extern mod extra;
 
-use core::io::*;
-use core::result::*;
-use core::hashmap::linear::*;
+use std::{vec,str};
+use std::io::*;
+use std::result::*;
+use std::hashmap::*;
 
-fn read_dict(reader : @Reader) -> ~LinearMap<~str,~[~str]> {
-    let mut map = ~LinearMap::new();
+fn read_dict(reader : @Reader) -> ~HashMap<~str,~[~str]> {
+    let mut map = ~HashMap::new();
     for reader.each_line |line| {
         let line   = line.trim();
         let length = line.len();
         // Original is using pre-strip() line for comparisons
-        if length >= 2 && length < 19 && line.all(|ch| (char::is_ascii(ch) && char::is_lowercase(ch))) {
-            let mut chars = str::to_chars(line);
-            std::sort::quick_sort(chars, |a,b| *a <= *b);
+        if length >= 2 && length < 19 && line.iter().all(|ch| (ch.is_ascii() && ch.is_lowercase())) {
+            let mut chars : ~[char] = line.iter().collect();
+            extra::sort::quick_sort(chars, |a,b| *a <= *b);
             let key = str::from_chars(chars);
             
             let mut value = match map.pop(&key) {
@@ -27,16 +28,17 @@ fn read_dict(reader : @Reader) -> ~LinearMap<~str,~[~str]> {
     return map;
 }
 
-fn sorted_keys<V:Copy>(dict : &LinearMap<~str,V>) -> ~[~str] {
+fn sorted_keys<V:Copy>(dict : &HashMap<~str,V>) -> ~[~str] {
     let mut keys = vec::with_capacity( dict.len() );
     for dict.each_key |&key| { keys.push(key); }
-    std::sort::quick_sort(keys, |a,b| *a <= *b);
+    extra::sort::quick_sort(keys, |a,b| *a <= *b);
     return keys;
 }
 
-fn print_dict(writer : @Writer, dict : &LinearMap<~str,~[~str]>) {
-    for sorted_keys(dict).each |key| {
-        let line = str::connect( dict.get(key).map(|&v| v), " " );
+fn print_dict(writer : @Writer, dict : &HashMap<~str,~[~str]>) {
+    let skeys = sorted_keys(dict);
+    for skeys.iter().advance |key| {
+        let line : ~str = dict.get(key).connect(" ");
         writer.write_str( fmt!("%s %s\n", *key, line) );
     }
 }

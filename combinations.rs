@@ -1,12 +1,12 @@
 #[ link(name = "combinations", vers="1.0") ];
 #[ crate_type = "lib" ];
 
-#[warn(deprecated_mode)];
 #[warn(deprecated_pattern)];
-#[warn(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 
 extern mod std;
+
+use std::*;
 
 /// Iterate over `r`-length subsequences of elements from `values`.
 ///
@@ -34,14 +34,15 @@ extern mod std;
 ///
 /// This function gleefully stolen from Python
 /// [`itertools.combinations`](http://docs.python.org/2/library/itertools.html#itertools.combinations).
-pub fn each_combination<T:Copy>(values : &[T], r : uint, fun : &fn(combo : &[T]) -> bool) {
+#[inline]
+pub fn each_combination<T:Copy>(values : &[T], r : uint, fun : &fn(combo : &[T]) -> bool) -> bool {
     let length          = values.len();
-    if r == 0 || r > length { return; }
+    if r == 0 || r > length { return true; }
     let max_indices0    = length - r;
     let mut indices     = vec::from_fn(r, |i| i);
-    let mut combination = vec::from_fn(r, |i| values[i]);
+    let mut combination = vec::from_fn(r, |i| copy values[i]);
     loop {
-        if !fun(combination) { return; }
+        if !fun(combination) { return false; }
         // Increment the indices
         let mut i = r - 1;
         indices[i] += 1;
@@ -54,12 +55,13 @@ pub fn each_combination<T:Copy>(values : &[T], r : uint, fun : &fn(combo : &[T])
         // Can't fix up 'done'
         if indices[0] > max_indices0 { break; }
         // Fix up the indices and the combination from i to r-1
-        combination[i] = values[indices[i]];
+        combination[i] = copy values[indices[i]];
         for uint::range(i + 1, r) |i| {
             indices[i] = indices[i-1] + 1;
-            combination[i] = values[indices[i]];
+            combination[i] = copy values[indices[i]];
         }
     }
+    return true;
 }
 
 /// Iterate over `r`-length subsequences of elements from `values`.
@@ -79,6 +81,7 @@ pub fn each_combination<T:Copy>(values : &[T], r : uint, fun : &fn(combo : &[T])
 /// * `r` - The length of the emitted combinations
 ///
 /// * `fun` - The function to iterate over the combinations
+#[inline]
 pub fn each_combination_ref<'v,T>(values : &'v [T], r : uint, fun : &fn(combo : &[&'v T]) -> bool) {
     each_combination(vec::from_fn(values.len(), |i| &values[i]), r, fun);
 }
@@ -115,7 +118,9 @@ pub fn reverse_part<T>(v : &mut [T], start : uint, end : uint) {
     let mut i = start;
     let mut j = end - 1;
     while i < j {
-        v[i] <-> v[j];
+        // v[i] <-> v[j];
+        // vec::swap(v,i,j);
+        v.swap(i,j);
         i += 1;
         j -= 1;
     }
@@ -143,7 +148,7 @@ pub fn reverse_part<T>(v : &mut [T], start : uint, end : uint) {
 /// * `fun` - The function to iterate over the combinations
 pub fn each_permutation<T : Copy>(values : &[T], fun : &fn(perm : &[T]) -> bool) {
     let length = values.len();
-    let mut permutation = vec::from_fn(length, |i| values[i]);
+    let mut permutation = vec::from_fn(length, |i| copy values[i]);
     if length <= 1 {
         fun(permutation);
         return;
@@ -166,13 +171,13 @@ pub fn each_permutation<T : Copy>(values : &[T], fun : &fn(perm : &[T]) -> bool)
         }
         // swap indices[k] and indices[l]; sort indices[k+1..]
         // (they're just reversed)
-        indices[k] <-> indices[l];
-        unsafe {
-            reverse_part(indices, k+1, length);
-        }
+        // indices[k] <-> indices[l];
+        // vec::swap(indices, k, l);
+        indices.swap(k,l);
+        reverse_part(indices, k+1, length);
         // fixup permutation based on indices
         for uint::range(k, length) |i| {
-            permutation[i] = values[indices[i]];
+            permutation[i] = copy values[indices[i]];
         }
     }
 }

@@ -1,7 +1,11 @@
 #[ link(name = "mmap", vers="1.0") ];
 #[ crate_type = "lib" ];
 
+use std::{libc,os,str,vec};
+
 pub mod raw {
+    use std::*;
+
     pub extern {
         unsafe fn mmap(addr : *libc::c_char, length : libc::size_t, 
                        prot : libc::c_int,   flags  : libc::c_int, 
@@ -27,7 +31,7 @@ pub mod raw {
 struct FileDescriptor(libc::c_int);
 
 impl Drop for FileDescriptor {
-    fn finalize(&self) { unsafe { libc::close(**self); } }
+    fn drop(&self) { unsafe { libc::close(**self); } }
 }
 
 unsafe fn open(filename : &str) -> FileDescriptor {
@@ -68,7 +72,7 @@ struct MappedRegion {
 }
 
 impl Drop for MappedRegion {
-    fn finalize(&self) {
+    fn drop(&self) {
         unsafe {
             if raw::munmap(self.reg, self.siz) < 0 {
                 fail!(fmt!("munmap(): %s", os::last_os_error()));

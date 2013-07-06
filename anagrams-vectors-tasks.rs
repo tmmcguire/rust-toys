@@ -1,13 +1,15 @@
-extern mod std;
+extern mod extra;
 
 extern mod combinations;
 extern mod bisect;
-extern mod misc;
 
-use core::comm::*;
-use core::io::*;
-use core::hashmap::linear::*;
-use core::task::spawn;
+use std::{vec,uint,os,util};
+use std::comm::*;
+use std::io::*;
+use std::hashmap::*;
+use std::task::spawn;
+
+pub fn split_words(s : &str) -> ~[~str] { s.word_iter().transform(|w| w.to_owned()).collect() }
 
 fn load_dictionary() -> (~[~[u8]],~[~[~str]]) {
     match file_reader(&Path("anadict-rust.txt")) {
@@ -15,7 +17,7 @@ fn load_dictionary() -> (~[~[u8]],~[~[~str]]) {
             let mut keys = ~[];
             let mut values = ~[];
             for reader.each_line() |line| {
-                let words = misc::split_words(line);
+                let words = split_words(line);
                 keys.push( vec::from_fn(words[0].len(), |i| words[0][i] as u8) );
                 values.push( vec::from_fn(words.len() - 1, |i| copy words[i+1]) );
             }
@@ -26,23 +28,23 @@ fn load_dictionary() -> (~[~[u8]],~[~[~str]]) {
 }
 
 fn get_letters(s : &str) -> ~[u8] {
-    let mut t = str::to_chars(s);
-    std::sort::quick_sort(t, |a,b| *a <= *b);
+    let mut t : ~[char] = s.iter().collect();
+    extra::sort::quick_sort(t, |a,b| *a <= *b);
     return vec::from_fn(t.len(), |i| t[i] as u8);
 }
 
 fn search(keys         : &[~[u8]],
           values       : &[~[~str]],
-          request_port : &Port<~[~[u8]]>) -> ~LinearSet<~str> {
+          request_port : &Port<~[~[u8]]>) -> ~HashSet<~str> {
     let klen = keys.len();
-    let mut set = ~LinearSet::new();
+    let mut set = ~HashSet::new();
     loop {
         let key_set = request_port.recv();
         if key_set.len() == 0 { break; }
-        for key_set.each |key| {
+        for key_set.iter().advance |key| {
             let j = bisect::bisect_left_ref(keys, key, 0, klen);
             if j < klen && keys[j] == *key {
-                for values[j].each |&word| { set.insert(copy word); }
+                for values[j].iter().advance |&word| { set.insert(copy word); }
             }
         }
     }
@@ -60,7 +62,7 @@ fn main() {
     let letters = get_letters(args[1]);
 
     let (response_port,response_chan) = stream();
-    let response_chan = SharedChan(response_chan);
+    let response_chan = SharedChan::new(response_chan);
 
     let mut request_chans : ~[Chan<~[~[u8]]>] = ~[];
     for width.times {
@@ -78,21 +80,24 @@ fn main() {
     let mut key_set = ~[];
     for uint::range(2,letters.len() + 1) |i| {
         for combinations::each_combination(letters,i) |combo| {
-            key_set.push( vec::from_slice(combo) );
+            key_set.push( combo.to_owned() );
+            // key_set.push( vec::from_slice(combo) );
             if key_set.len() >= depth {
                 let mut ks = ~[];
-                ks <-> key_set;
+                // ks <-> key_set;
+                util::swap(&mut ks, &mut key_set);
                 request_chans[t].send(ks);
                 t = (t + 1) % width;
             }
         }
     }
     if !key_set.is_empty() { request_chans[t].send(key_set); }
-    for request_chans.each |chan| { chan.send(~[]) };
+    for request_chans.iter().advance |chan| { chan.send(~[]) };
 
-    let mut set : ~LinearSet<~str> = ~LinearSet::new();
+    let mut set : ~HashSet<~str> = ~HashSet::new();
     for width.times {
-        for response_port.recv().each |&word| { set.insert(word); }
+        let response_set = response_port.recv();
+        for response_set.iter().advance |&word| { set.insert(word); }
     }
     println(fmt!("%u", set.len()));
 }

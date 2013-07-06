@@ -3,10 +3,11 @@ extern mod extra;
 extern mod combinations;
 extern mod mmap;
 
+use std::{os,uint,vec};
 use std::hashmap::*;
 
 fn get_letters(s : &str) -> ~[u8] {
-    let mut t = str::to_chars(s);
+    let mut t : ~[char] = s.iter().collect();
     extra::sort::quick_sort(t, |a,b| *a <= *b);
     return vec::from_fn(t.len(), |i| t[i] as u8);
 }
@@ -20,7 +21,7 @@ fn line_map<'b>(buffer : &'b [u8]) -> HashMap<&'b [u8],&'b [u8]> {
         while j < length && buffer[j] != ' ' as u8 { j += 1; }
         let mut k = j+1;
         while k < length && buffer[k] != '\n' as u8 { k += 1; }
-        map.insert(vec::slice(buffer, i, j), vec::slice(buffer, j+1, k));
+        map.insert(buffer.slice(i, j), buffer.slice(j+1, k));
         i = k + 1;
     }
     return map;
@@ -40,10 +41,10 @@ impl<'self> Equiv<&'self [u8]> for MapKey {
 fn search<'b>(letters : &[u8], dictionary : &'b HashMap<&'b [u8],&'b [u8]>) -> HashSet<&'b [u8]>
 {
     let mut set = HashSet::new();
-    for uint::range(2, letters.len() + 1) |i| {
+    for uint::iterate(2, letters.len() + 1) |i| {
         let mut key = MapKey(vec::from_elem(i, 0));
         for combinations::each_combination(letters,i) |combo| {
-            for combo.eachi |j,&ch| { key[j] = ch; }
+            for uint::iterate(0, combo.len()) |j| { key[j] = combo[j]; }
             dictionary.find_equiv(&key).map(|&v| set.insert(*v));
         }
     }
@@ -60,8 +61,8 @@ fn main() {
         let map = line_map(buf);
         let set = search(letters, &map);
         let mut count = 0;
-        for set.each |ln| {
-            count += 1 + vec::count(*ln, &(' ' as u8));
+        for set.iter().advance |ln| {
+            count += 1 + ln.iter().count(|&ch| { ch == ' ' as u8 });
         }
         println(fmt!("%?", count));
     }

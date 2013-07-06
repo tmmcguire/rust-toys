@@ -1,14 +1,7 @@
 #[ link(name = "bisect", vers="1.0") ];
 #[ crate_type = "lib" ];
 
-#[warn(deprecated_mode)];
-#[warn(deprecated_pattern)];
-#[warn(vecs_implicitly_copyable)];
-#[deny(non_camel_case_types)];
-
 extern mod std;
-
-use core::cmp::Ord;
 
 /// Locate the insertion point for `x` in `a` to maintain sorted order.
 ///

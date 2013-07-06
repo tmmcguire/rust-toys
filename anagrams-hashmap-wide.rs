@@ -1,21 +1,23 @@
-extern mod std;
+extern mod extra;
 
-use core::comm::*;
-use core::io::*;
-use core::hashmap::linear::*;
+use std::{vec,uint,os};
+use std::comm::*;
+use std::io::*;
+use std::hashmap::*;
 
 mod combinations;
 mod bisect;
-mod misc;
 
-fn load_dictionaries(width : uint) -> ~[~LinearMap<~[u8],~[~str]>] {
+pub fn split_words(s : &str) -> ~[~str] { s.word_iter().transform(|w| w.to_owned()).collect() }
+
+fn load_dictionaries(width : uint) -> ~[~HashMap<~[u8],~[~str]>] {
     match file_reader(&Path("anadict-rust.txt")) {
         Ok(reader) => {
-            let mut maps = vec::from_fn(width, |_| ~LinearMap::new());
+            let mut maps = vec::from_fn(width, |_| ~HashMap::new());
             let mut t = 0;
             for reader.each_line |line| {
-                let words = misc::split_words(line);
-                let key = str::to_chars(words[0]);
+                let words = split_words(line);
+                let key : ~[char] = words[0].iter().collect();
                 maps[t].insert(vec::from_fn(key.len(), |i| key[i] as u8),
                                vec::from_fn(words.len() - 1, |i| copy words[i+1]));
                 t = (t + 1) % width;
@@ -27,21 +29,20 @@ fn load_dictionaries(width : uint) -> ~[~LinearMap<~[u8],~[~str]>] {
 }
 
 fn get_letters(s : &str) -> ~[u8] {
-    let mut t = str::to_chars(s);
-    std::sort::quick_sort(t, |a,b| *a <= *b);
+    let mut t : ~[char] = s.iter().collect();
+    extra::sort::quick_sort(t, |a,b| *a <= *b);
     return vec::from_fn(t.len(), |i| t[i] as u8);
 }
 
-fn search(letters : &[u8],
-          dictionary : &LinearMap<~[u8],~[~str]>) -> ~LinearSet<~str> {
-    let mut set = ~LinearSet::new();
+fn search(letters : &[u8], dictionary : &HashMap<~[u8],~[~str]>) -> ~HashSet<~str> {
+    let mut set = ~HashSet::new();
     for uint::range(2, letters.len() + 1) |i| {
         let mut key = vec::from_elem(i, 0);
         for combinations::each_combination(letters,i) |combo| {
-            for combo.eachi |j,&ch| { key[j] = ch; }
+            for uint::iterate(0, combo.len()) |j| { key[j] = combo[j]; }
             match dictionary.find(&key) {
                 Some(ref val) => {
-                    for val.each |word| { set.insert(copy *word); }
+                    for val.iter().advance |&word| { set.insert(word); }
                 }
                 None => { }
             }
@@ -59,11 +60,10 @@ fn main() {
 
     let dictionaries = load_dictionaries(width);
 
-    let (response_port,response_chan)
-        = stream();
-    let response_chan = SharedChan(response_chan);
+    let (response_port,response_chan) = stream();
+    let response_chan = SharedChan::new(response_chan);
 
-    for dictionaries.each |&dictionary| {
+    for dictionaries.iter().advance |&dictionary| {
         let response_chan = response_chan.clone();
         let letters = copy letters;
         do spawn {
@@ -71,9 +71,22 @@ fn main() {
         }
     }
 
-    let mut set = ~LinearSet::new();
+    let mut set : ~HashSet<~str> = ~HashSet::new();
     for width.times {
-        for response_port.recv().each |&word| { set.insert(word); }
+        let response_set = response_port.recv();
+        for response_set.iter().advance |&word| { set.insert(word); }
+        // 0.7:
+        // for response_port.recv().iter().advance |&word| { set.insert(word); }
+        // produces:
+        // anagrams-hashmap-wide.rs:81:12: 81:33 error: borrowed value does not live long enough
+        // anagrams-hashmap-wide.rs:81         for response_port.recv().iter().advance |&word| { set.insert(word); }
+        //                                         ^~~~~~~~~~~~~~~~~~~~~
+        // anagrams-hashmap-wide.rs:81:76: 81:77 note: borrowed pointer must be valid for the method call at 81:76...
+        // anagrams-hashmap-wide.rs:81         for response_port.recv().iter().advance |&word| { set.insert(word); }
+        //                                                                                                         ^
+        // anagrams-hashmap-wide.rs:81:12: 81:40 note: ...but borrowed value is only valid for the method call at 81:12
+        // anagrams-hashmap-wide.rs:81         for response_port.recv().iter().advance |&word| { set.insert(word); }
+        //                                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
     }
     println(fmt!("%u", set.len()));
 }
