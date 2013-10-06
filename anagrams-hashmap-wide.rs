@@ -90,5 +90,5 @@ fn main() {
         // anagrams-hashmap-wide.rs:81         for response_port.recv().iter().advance |&word| { set.insert(word); }
         //                                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
     }
-    println(fmt!("%u", set.len()));
+    println!("{:u}", set.len());
 }

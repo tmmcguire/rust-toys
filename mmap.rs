@@ -40,7 +40,7 @@ impl Drop for FileDescriptor {
 #[fixed_stack_segment]
 unsafe fn open(filename : &str) -> FileDescriptor {
     let fd = do filename.with_c_str |cs| { libc::open(cs, libc::O_RDONLY as libc::c_int, 0) };
-    if fd < 0 { fail!(fmt!("failure in open(%s): %s", filename, os::last_os_error())); }
+    if fd < 0 { fail!(format!("failure in open({:s}): {:s}", filename, os::last_os_error())); }
     return FileDescriptor(fd);
 }
 
@@ -68,7 +68,7 @@ unsafe fn fstat(fd : libc::c_int) -> libc::stat {
         __pad0        : 0,
         __unused      : [0,0,0]
     };
-    if libc::fstat(fd, &mut s) < 0 { fail!(fmt!("failure in fstat(): %s", os::last_os_error())); }
+    if libc::fstat(fd, &mut s) < 0 { fail!(format!("failure in fstat(): {:s}", os::last_os_error())); }
     return s;
 }
 
@@ -83,7 +83,7 @@ impl Drop for MappedRegion {
     fn drop(&mut self) {
         unsafe {
             if raw::munmap(self.reg, self.siz) < 0 {
-                fail!(fmt!("munmap(): %s", os::last_os_error()));
+                fail!(format!("munmap(): {:s}", os::last_os_error()));
             }
         }
     }
@@ -93,7 +93,7 @@ impl Drop for MappedRegion {
 #[fixed_stack_segment]
 unsafe fn mmap(fd : libc::c_int, size : libc::size_t) -> MappedRegion {
     let buf = raw::mmap(0 as *libc::c_char, size, raw::PROT_READ, raw::MAP_SHARED, fd, 0);
-    if buf == -1 as *u8 { fail!(fmt!("mmap(): %s", os::last_os_error())); }
+    if buf == -1 as *u8 { fail!(format!("mmap(): {:s}", os::last_os_error())); }
     MappedRegion { reg : buf, siz : size }
  }
 

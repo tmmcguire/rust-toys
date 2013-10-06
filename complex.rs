@@ -12,7 +12,7 @@ impl Complex {
 }
 
 impl ToStr for Complex {
-    fn to_str(&self) -> ~str { fmt!("(%f + %fi)", self.r, self.j) }
+    fn to_str(&self) -> ~str { format!("({:f} + {:f}i)", self.r, self.j) }
 }
 
 trait ToComplex { fn to_complex(&self) -> Complex; }

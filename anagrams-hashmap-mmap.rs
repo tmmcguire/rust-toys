@@ -60,10 +60,10 @@ fn main() {
     do mmap::with_mmap_file_contents("anadict.txt") |buf| {
         let map = line_map(buf);
         let set = search(letters, &map);
-        let mut count = 0;
+        let mut count = 0u;
         for ln in set.iter() {
             count += 1 + ln.iter().count(|&ch| { ch == ' ' as u8 });
         }
-        println(fmt!("%?", count));
+        println!("{:u}", count);
     }
 }

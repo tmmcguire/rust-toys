@@ -23,7 +23,7 @@ fn thirtythree_million_siphashes() {
     do 33000000.times {
         potato ^= s.hash();
     }
-    println(fmt!("%?", potato));
+    println!("{:?}", potato);
 }
 
 fn djbhash(bytes : &[u8]) -> u64 {
@@ -40,10 +40,10 @@ fn thirtythree_million_djbhashes() {
     do 33000000.times {
         potato ^= djbhash(s.as_bytes());
     }
-    println(fmt!("%?", potato));
+    println!("{:?}", potato);
 }
 
 fn main() {
-    println(fmt!("sip: %?", duration(thirtythree_million_siphashes)));
-    println(fmt!("djb: %?", duration(thirtythree_million_djbhashes)));
+    println!("sip: {:?}", duration(thirtythree_million_siphashes));
+    println!("djb: {:?}", duration(thirtythree_million_djbhashes));
 }

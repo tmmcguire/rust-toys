@@ -10,9 +10,9 @@ fn duration(tag : &str, start : time::Timespec, end : time::Timespec) {
     let d_sec = end.sec - start.sec;
     let d_nsec = end.nsec - start.nsec;
     if d_nsec >= 0 {
-        println(fmt!("%s: %?", tag, time::Timespec { sec : d_sec, nsec : d_nsec }));
+        println!("{:s}: {:?}", tag, time::Timespec { sec : d_sec, nsec : d_nsec });
     } else {
-        println(fmt!("%s: %?", tag, time::Timespec { sec : d_sec - 1, nsec : d_nsec + 1000000000 }));
+        println!("{:s}: {:?}", tag, time::Timespec { sec : d_sec - 1, nsec : d_nsec + 1000000000 });
     }
 }
 
@@ -71,5 +71,5 @@ fn main() {
     // duration("load_dictionary", start, time::get_time());
     let set = search(letters,dictionary);
     // duration("search", start, time::get_time());
-    println(fmt!("%u", set.len()));
+    println!("{:u}", set.len());
 }

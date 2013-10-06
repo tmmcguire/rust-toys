@@ -8,7 +8,7 @@ PROGS  = anagrams-hashmap-wide anagrams-hashmap anagrams-vectors-tasks anagrams-
          anagrams-vectors anagrams-hashmap-mmap \
          mk_anadict mk_anadict_traits \
          $(ALT)/anagrams-hash $(ALT)/anagrams-vectors \
-         complex
+         complex hashing-performance
 
 PYTHON = $(ALT)/mk_anadict.py $(ALT)/presser_one.py $(ALT)/presser_two.py $(ALT)/presser_three.py
 

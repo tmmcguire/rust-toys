@@ -49,5 +49,5 @@ fn main() {
             }
         }
     }
-    println(fmt!("%u", set.len()));
+    println!("{:u}", set.len());
 }

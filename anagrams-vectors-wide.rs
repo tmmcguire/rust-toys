@@ -84,5 +84,5 @@ fn main() {
         let response_set = response_port.recv();
         for word in response_set.iter() { set.insert(word.clone()); }
     }
-    println(fmt!("%u", set.len()));
+    println!("{:u}", set.len());
 }
