@@ -20,7 +20,7 @@ fn thirtythree_million_siphashes() {
 
     let s = ~"abcdefghijklmnopqrstuvwxyz";
     let mut potato = 0u64;
-    for std::uint::range(0, 33000000) |_| {
+    do 33000000.times {
         potato ^= s.hash();
     }
     println(fmt!("%?", potato));
@@ -28,7 +28,7 @@ fn thirtythree_million_siphashes() {
 
 fn djbhash(bytes : &[u8]) -> u64 {
     let mut hash = 5381u64;
-    for bytes.iter().advance |byte| {
+    for byte in bytes.iter() {
         hash = (33u64 * hash) ^ *byte as u64;
     }
     return hash;
@@ -37,7 +37,7 @@ fn djbhash(bytes : &[u8]) -> u64 {
 fn thirtythree_million_djbhashes() {
     let s = ~"abcdefghijklmnopqrstuvwxyz";
     let mut potato = 0u64;
-    for std::uint::range(0, 33000000) |_| {
+    do 33000000.times {
         potato ^= djbhash(s.as_bytes());
     }
     println(fmt!("%?", potato));
