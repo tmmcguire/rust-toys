@@ -1,4 +1,4 @@
-use std::float;
+use std::num;
 use std::num::NumCast;
 
 struct Complex {
@@ -8,7 +8,7 @@ struct Complex {
 
 impl Complex {
     fn conjugate(&self) -> Complex { Complex { j : -self.j, .. *self } }
-    fn magnitude(&self) -> float { float::sqrt( self.r * self.r + self.j * self.j ) }
+    fn magnitude(&self) -> float { num::sqrt( self.r * self.r + self.j * self.j ) }
 }
 
 impl ToStr for Complex {

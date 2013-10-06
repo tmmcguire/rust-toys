@@ -3,24 +3,25 @@ extern mod extra;
 extern mod combinations;
 extern mod bisect;
 
-use std::{vec,uint,os,util};
+use std::{vec,iter,os,util};
 use std::comm::*;
 use std::io::*;
 use std::hashmap::*;
 use std::task::spawn;
 
-pub fn split_words(s : &str) -> ~[~str] { s.word_iter().transform(|w| w.to_owned()).collect() }
+pub fn split_words(s : &str) -> ~[~str] { s.word_iter().map(|w| w.to_owned()).collect() }
 
 fn load_dictionary() -> (~[~[u8]],~[~[~str]]) {
     match file_reader(&Path("anadict.txt")) {
         Ok(reader) => {
             let mut keys = ~[];
             let mut values = ~[];
-            for reader.each_line() |line| {
-                let words = split_words(line);
-                keys.push( vec::from_fn(words[0].len(), |i| words[0][i] as u8) );
-                values.push( vec::from_fn(words.len() - 1, |i| copy words[i+1]) );
-            }
+            reader.each_line(|line| {
+                    let words = split_words(line);
+                    keys.push( vec::from_fn(words[0].len(), |i| words[0][i] as u8) );
+                    values.push( vec::from_fn(words.len() - 1, |i| words[i+1].clone()) );
+                    true
+                });
             return (keys,values);
         }
         Err(msg) => { fail!(msg); }
@@ -41,10 +42,10 @@ fn search(keys         : &[~[u8]],
     loop {
         let key_set = request_port.recv();
         if key_set.len() == 0 { break; }
-        for key_set.iter().advance |key| {
+        for key in key_set.iter() {
             let j = bisect::bisect_left_ref(keys, key, 0, klen);
             if j < klen && keys[j] == *key {
-                for values[j].iter().advance |&word| { set.insert(copy word); }
+                for word in values[j].iter() { set.insert(word.clone()); }
             }
         }
     }
@@ -65,7 +66,7 @@ fn main() {
     let response_chan = SharedChan::new(response_chan);
 
     let mut request_chans : ~[Chan<~[~[u8]]>] = ~[];
-    for width.times {
+    do width.times() {
         let (request_port,request_chan) = stream();
         request_chans.push(request_chan);
         // Set up and start worker task
@@ -78,8 +79,8 @@ fn main() {
 
     let mut t = 0;
     let mut key_set = ~[];
-    for uint::range(2,letters.len() + 1) |i| {
-        for combinations::each_combination(letters,i) |combo| {
+    for i in iter::range(2,letters.len() + 1) {
+        do combinations::each_combination(letters,i) |combo| {
             key_set.push( combo.to_owned() );
             // key_set.push( vec::from_slice(combo) );
             if key_set.len() >= depth {
@@ -92,12 +93,12 @@ fn main() {
         }
     }
     if !key_set.is_empty() { request_chans[t].send(key_set); }
-    for request_chans.iter().advance |chan| { chan.send(~[]) };
+    for chan in request_chans.iter() { chan.send(~[]) };
 
     let mut set : ~HashSet<~str> = ~HashSet::new();
-    for width.times {
+    do width.times() {
         let response_set = response_port.recv();
-        for response_set.iter().advance |&word| { set.insert(word); }
+        for word in response_set.iter() { set.insert(word.clone()); }
     }
     println(fmt!("%u", set.len()));
 }

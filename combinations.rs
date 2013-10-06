@@ -1,9 +1,6 @@
 #[ link(name = "combinations", vers="1.0") ];
 #[ crate_type = "lib" ];
 
-#[warn(deprecated_pattern)];
-#[deny(non_camel_case_types)];
-
 extern mod std;
 
 use std::*;
@@ -35,14 +32,14 @@ use std::*;
 /// This function gleefully stolen from Python
 /// [`itertools.combinations`](http://docs.python.org/2/library/itertools.html#itertools.combinations).
 #[inline]
-pub fn each_combination<T:Copy>(values : &[T], r : uint, fun : &fn(combo : &[T]) -> bool) -> bool {
+pub fn each_combination<T:Clone>(values : &[T], r : uint, fun : &fn(combo : &[T])) {
     let length          = values.len();
-    if r == 0 || r > length { return true; }
+    if r == 0 || r > length { return; }
     let max_indices0    = length - r;
     let mut indices     = vec::from_fn(r, |i| i);
-    let mut combination = vec::from_fn(r, |i| copy values[i]);
+    let mut combination = vec::from_fn(r, |i| values[i].clone());
     loop {
-        if !fun(combination) { return false; }
+        fun(combination);
         // Increment the indices
         let mut i = r - 1;
         indices[i] += 1;
@@ -55,13 +52,13 @@ pub fn each_combination<T:Copy>(values : &[T], r : uint, fun : &fn(combo : &[T])
         // Can't fix up 'done'
         if indices[0] > max_indices0 { break; }
         // Fix up the indices and the combination from i to r-1
-        combination[i] = copy values[indices[i]];
-        for uint::range(i + 1, r) |i| {
+        combination[i] = values[indices[i]].clone();
+        for i in range(i + 1, r) {
             indices[i] = indices[i-1] + 1;
-            combination[i] = copy values[indices[i]];
+            combination[i] = values[indices[i]].clone();
         }
     }
-    return true;
+    return;
 }
 
 /// Iterate over `r`-length subsequences of elements from `values`.
@@ -82,7 +79,7 @@ pub fn each_combination<T:Copy>(values : &[T], r : uint, fun : &fn(combo : &[T])
 ///
 /// * `fun` - The function to iterate over the combinations
 #[inline]
-pub fn each_combination_ref<'v,T>(values : &'v [T], r : uint, fun : &fn(combo : &[&'v T]) -> bool) {
+pub fn each_combination_ref<'v,T>(values : &'v [T], r : uint, fun : &fn(combo : &[&'v T])) {
     each_combination(vec::from_fn(values.len(), |i| &values[i]), r, fun);
 }
 
@@ -146,9 +143,9 @@ pub fn reverse_part<T>(v : &mut [T], start : uint, end : uint) {
 /// chosen
 ///
 /// * `fun` - The function to iterate over the combinations
-pub fn each_permutation<T : Copy>(values : &[T], fun : &fn(perm : &[T]) -> bool) {
+pub fn each_permutation<T : Clone>(values : &[T], fun : &fn(perm : &[T]) -> bool) {
     let length = values.len();
-    let mut permutation = vec::from_fn(length, |i| copy values[i]);
+    let mut permutation = vec::from_fn(length, |i| values[i].clone());
     if length <= 1 {
         fun(permutation);
         return;
@@ -176,8 +173,8 @@ pub fn each_permutation<T : Copy>(values : &[T], fun : &fn(perm : &[T]) -> bool)
         indices.swap(k,l);
         reverse_part(indices, k+1, length);
         // fixup permutation based on indices
-        for uint::range(k, length) |i| {
-            permutation[i] = copy values[indices[i]];
+        for i in range(k, length) {
+            permutation[i] = values[indices[i]].clone();
         }
     }
 }
@@ -204,7 +201,7 @@ pub fn each_permutation_ref<'v,T>(values : &'v [T], fun : &fn(perm : &[&'v T]) -
 #[cfg(test)]
 mod tests {
 
-    fn dup<T:Copy>(values : &[&T]) -> ~[T] {
+    fn dup<T:Clone>(values : &[&T]) -> ~[T] {
         vec::from_fn(values.len(), |i| *values[i])
     }
 
@@ -219,176 +216,176 @@ mod tests {
     fn test_zero() {
         let values = [1,2,3,4];
         let mut v : ~[~[int]] = ~[];
-        for each_combination(values,0) |p| { v.push(vec::from_slice(p)); }
+        each_combination(values,0, |p| { v.push(vec::from_slice(p)); });
         assert!(v == ~[]);
     }
 
-    #[test]
-    fn test_zero_ref() {
-        let values = [1,2,3,4];
-        let mut v : ~[~[int]] = ~[];
-        for each_combination_ref(values,0) |p| { v.push(dup(p)); }
-        assert!(v == ~[]);
-    }
+    // #[test]
+    // fn test_zero_ref() {
+    //     let values = [1,2,3,4];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_combination_ref(values,0) |p| { v.push(dup(p)); }
+    //     assert!(v == ~[]);
+    // }
 
-    #[test]
-    fn test_one() {
-        let values = [1,2,3,4];
-        let mut v : ~[~[int]] = ~[];
-        for each_combination(values,1) |p| {
-            v.push(vec::from_slice(p));
-        }
-        assert!(v == ~[~[1],~[2],~[3],~[4]]);
-    }
+    // #[test]
+    // fn test_one() {
+    //     let values = [1,2,3,4];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_combination(values,1) |p| {
+    //         v.push(vec::from_slice(p));
+    //     }
+    //     assert!(v == ~[~[1],~[2],~[3],~[4]]);
+    // }
 
-    #[test]
-    fn test_one_ref() {
-        let values = [1,2,3,4];
-        let mut v : ~[~[int]] = ~[];
-        for each_combination_ref(values,1) |p| {
-            v.push(dup(p));
-        }
-        assert!(v == ~[~[1],~[2],~[3],~[4]]);
-    }
+    // #[test]
+    // fn test_one_ref() {
+    //     let values = [1,2,3,4];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_combination_ref(values,1) |p| {
+    //         v.push(dup(p));
+    //     }
+    //     assert!(v == ~[~[1],~[2],~[3],~[4]]);
+    // }
 
-    #[test]
-    fn test_two() {
-        let values = [1,2,3,4];
-        let mut v : ~[~[int]] = ~[];
-        for each_combination(values,2) |p| {
-            v.push(vec::from_slice(p));
-        }
-        assert!(v == ~[~[1,2],~[1,3],~[1,4],~[2,3],~[2,4],~[3,4]]);
-    }
+    // #[test]
+    // fn test_two() {
+    //     let values = [1,2,3,4];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_combination(values,2) |p| {
+    //         v.push(vec::from_slice(p));
+    //     }
+    //     assert!(v == ~[~[1,2],~[1,3],~[1,4],~[2,3],~[2,4],~[3,4]]);
+    // }
 
-    #[test]
-    fn test_two_ref() {
-        let values = [1,2,3,4];
-        let mut v : ~[~[int]] = ~[];
-        for each_combination_ref(values,2) |p| {
-            v.push(dup(p));
-        }
-        assert!(v == ~[~[1,2],~[1,3],~[1,4],~[2,3],~[2,4],~[3,4]]);
-    }
+    // #[test]
+    // fn test_two_ref() {
+    //     let values = [1,2,3,4];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_combination_ref(values,2) |p| {
+    //         v.push(dup(p));
+    //     }
+    //     assert!(v == ~[~[1,2],~[1,3],~[1,4],~[2,3],~[2,4],~[3,4]]);
+    // }
 
-    #[test]
-    fn test_three() {
-        let values = [1,2,3,4];
-        let mut v : ~[~[int]] = ~[];
-        for each_combination(values,3) |p| {
-            v.push(vec::from_slice(p));
-        }
-        assert!(v == ~[~[1,2,3],~[1,2,4],~[1,3,4],~[2,3,4]]);
-    }
+    // #[test]
+    // fn test_three() {
+    //     let values = [1,2,3,4];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_combination(values,3) |p| {
+    //         v.push(vec::from_slice(p));
+    //     }
+    //     assert!(v == ~[~[1,2,3],~[1,2,4],~[1,3,4],~[2,3,4]]);
+    // }
 
-    #[test]
-    fn test_three_ref() {
-        let values = [1,2,3,4];
-        let mut v : ~[~[int]] = ~[];
-        for each_combination_ref(values,3) |p| {
-            v.push(dup(p));
-        }
-        assert!(v == ~[~[1,2,3],~[1,2,4],~[1,3,4],~[2,3,4]]);
-    }
+    // #[test]
+    // fn test_three_ref() {
+    //     let values = [1,2,3,4];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_combination_ref(values,3) |p| {
+    //         v.push(dup(p));
+    //     }
+    //     assert!(v == ~[~[1,2,3],~[1,2,4],~[1,3,4],~[2,3,4]]);
+    // }
 
-    #[test]
-    fn test_four() {
-        let values = [1,2,3,4];
-        let mut v : ~[~[int]] = ~[];
-        for each_combination(values,4) |p| {
-            v.push(vec::from_slice(p));
-        }
-        assert!(v == ~[~[1,2,3,4]]);
-    }
+    // #[test]
+    // fn test_four() {
+    //     let values = [1,2,3,4];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_combination(values,4) |p| {
+    //         v.push(vec::from_slice(p));
+    //     }
+    //     assert!(v == ~[~[1,2,3,4]]);
+    // }
 
-    #[test]
-    fn test_four_ref() {
-        let values = [1,2,3,4];
-        let mut v : ~[~[int]] = ~[];
-        for each_combination_ref(values,4) |p| {
-            v.push(dup(p));
-        }
-        assert!(v == ~[~[1,2,3,4]]);
-    }
+    // #[test]
+    // fn test_four_ref() {
+    //     let values = [1,2,3,4];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_combination_ref(values,4) |p| {
+    //         v.push(dup(p));
+    //     }
+    //     assert!(v == ~[~[1,2,3,4]]);
+    // }
 
-    #[test]
-    fn test_permutations0() {
-        let values = [];
-        let mut v : ~[~[int]] = ~[];
-        for each_permutation(values) |p| {
-            v.push(vec::from_slice(p));
-        }
-        assert!(v == ~[~[]]);
-    }
+    // #[test]
+    // fn test_permutations0() {
+    //     let values = [];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_permutation(values) |p| {
+    //         v.push(vec::from_slice(p));
+    //     }
+    //     assert!(v == ~[~[]]);
+    // }
 
-    #[test]
-    fn test_permutations0_ref() {
-        let values = [];
-        let mut v : ~[~[int]] = ~[];
-        for each_permutation_ref(values) |p| {
-            v.push(dup(p));
-        }
-        assert!(v == ~[~[]]);
-    }
+    // #[test]
+    // fn test_permutations0_ref() {
+    //     let values = [];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_permutation_ref(values) |p| {
+    //         v.push(dup(p));
+    //     }
+    //     assert!(v == ~[~[]]);
+    // }
 
-    #[test]
-    fn test_permutations1() {
-        let values = [1];
-        let mut v : ~[~[int]] = ~[];
-        for each_permutation(values) |p| {
-            v.push(vec::from_slice(p));
-        }
-        assert!(v == ~[~[1]]);
-    }
+    // #[test]
+    // fn test_permutations1() {
+    //     let values = [1];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_permutation(values) |p| {
+    //         v.push(vec::from_slice(p));
+    //     }
+    //     assert!(v == ~[~[1]]);
+    // }
 
-    #[test]
-    fn test_permutations1_ref() {
-        let values = [1];
-        let mut v : ~[~[int]] = ~[];
-        for each_permutation_ref(values) |p| {
-            v.push(dup(p));
-        }
-        assert!(v == ~[~[1]]);
-    }
+    // #[test]
+    // fn test_permutations1_ref() {
+    //     let values = [1];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_permutation_ref(values) |p| {
+    //         v.push(dup(p));
+    //     }
+    //     assert!(v == ~[~[1]]);
+    // }
 
-    #[test]
-    fn test_permutations2() {
-        let values = [1,2];
-        let mut v : ~[~[int]] = ~[];
-        for each_permutation(values) |p| {
-            v.push(vec::from_slice(p));
-        }
-        assert!(v == ~[~[1,2],~[2,1]]);
-    }
+    // #[test]
+    // fn test_permutations2() {
+    //     let values = [1,2];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_permutation(values) |p| {
+    //         v.push(vec::from_slice(p));
+    //     }
+    //     assert!(v == ~[~[1,2],~[2,1]]);
+    // }
 
-    #[test]
-    fn test_permutations2_ref() {
-        let values = [1,2];
-        let mut v : ~[~[int]] = ~[];
-        for each_permutation_ref(values) |p| {
-            v.push(dup(p));
-        }
-        assert!(v == ~[~[1,2],~[2,1]]);
-    }
+    // #[test]
+    // fn test_permutations2_ref() {
+    //     let values = [1,2];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_permutation_ref(values) |p| {
+    //         v.push(dup(p));
+    //     }
+    //     assert!(v == ~[~[1,2],~[2,1]]);
+    // }
 
-    #[test]
-    fn test_permutations3() {
-        let values = [1,2,3];
-        let mut v : ~[~[int]] = ~[];
-        for each_permutation(values) |p| {
-            v.push(vec::from_slice(p));
-        }
-        assert!(v == ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]]);
-    }
+    // #[test]
+    // fn test_permutations3() {
+    //     let values = [1,2,3];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_permutation(values) |p| {
+    //         v.push(vec::from_slice(p));
+    //     }
+    //     assert!(v == ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]]);
+    // }
 
-    #[test]
-    fn test_permutations3_ref() {
-        let values = [1,2,3];
-        let mut v : ~[~[int]] = ~[];
-        for each_permutation_ref(values) |p| {
-            v.push(dup(p));
-        }
-        assert!(v == ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]]);
-    }
+    // #[test]
+    // fn test_permutations3_ref() {
+    //     let values = [1,2,3];
+    //     let mut v : ~[~[int]] = ~[];
+    //     for each_permutation_ref(values) |p| {
+    //         v.push(dup(p));
+    //     }
+    //     assert!(v == ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]]);
+    // }
 
 }

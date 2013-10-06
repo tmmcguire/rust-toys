@@ -1,16 +1,16 @@
 #[ link(name = "mmap", vers="1.0") ];
 #[ crate_type = "lib" ];
 
-use std::{libc,os,str,vec};
+use std::{libc,os,vec};
 
 pub mod raw {
     use std::*;
 
-    pub extern {
-        unsafe fn mmap(addr : *libc::c_char, length : libc::size_t, 
-                       prot : libc::c_int,   flags  : libc::c_int, 
-                       fd   : libc::c_int,   offset : libc::off_t) -> *u8;
-        unsafe fn munmap(addr : *u8, length : libc::size_t) -> libc::c_int;
+    extern {
+        fn mmap(addr : *libc::c_char, length : libc::size_t, 
+                prot : libc::c_int,   flags  : libc::c_int, 
+                fd   : libc::c_int,   offset : libc::off_t) -> *u8;
+        fn munmap(addr : *u8, length : libc::size_t) -> libc::c_int;
     }
 
     /* From /usr/include/asm-generic/mman-common.h on Linux */
@@ -31,15 +31,21 @@ pub mod raw {
 struct FileDescriptor(libc::c_int);
 
 impl Drop for FileDescriptor {
-    fn drop(&self) { unsafe { libc::close(**self); } }
+    #[inline(never)]
+    #[fixed_stack_segment]
+    fn drop(&mut self) { unsafe { libc::close(**self); } }
 }
 
+#[inline(never)]
+#[fixed_stack_segment]
 unsafe fn open(filename : &str) -> FileDescriptor {
-    let fd = do str::as_c_str(filename) |cs| { libc::open(cs, libc::O_RDONLY as libc::c_int, 0) };
+    let fd = do filename.with_c_str |cs| { libc::open(cs, libc::O_RDONLY as libc::c_int, 0) };
     if fd < 0 { fail!(fmt!("failure in open(%s): %s", filename, os::last_os_error())); }
     return FileDescriptor(fd);
 }
 
+#[inline(never)]
+#[fixed_stack_segment]
 unsafe fn fstat(fd : libc::c_int) -> libc::stat {
     /* target_arch = "x86_64", target_os = "linux" or target_os = "android" */
     let mut s = libc::stat {
@@ -72,7 +78,9 @@ struct MappedRegion {
 }
 
 impl Drop for MappedRegion {
-    fn drop(&self) {
+    #[inline(never)]
+    #[fixed_stack_segment]
+    fn drop(&mut self) {
         unsafe {
             if raw::munmap(self.reg, self.siz) < 0 {
                 fail!(fmt!("munmap(): %s", os::last_os_error()));
@@ -81,6 +89,8 @@ impl Drop for MappedRegion {
     }
 }
 
+#[inline(never)]
+#[fixed_stack_segment]
 unsafe fn mmap(fd : libc::c_int, size : libc::size_t) -> MappedRegion {
     let buf = raw::mmap(0 as *libc::c_char, size, raw::PROT_READ, raw::MAP_SHARED, fd, 0);
     if buf == -1 as *u8 { fail!(fmt!("mmap(): %s", os::last_os_error())); }
