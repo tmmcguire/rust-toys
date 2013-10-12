@@ -1,3 +1,11 @@
+// Copyright 2013 Tommy M. McGuire
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 #[ link(name = "djbhash", vers="1.0") ];
 #[ crate_type = "lib" ];
 
@@ -17,7 +25,7 @@ impl DJBState {
     fn new() -> DJBState { DJBState { hash : 5381u64 } }
 
     #[inline]
-    fn djbhash_bytes<T:IterBytes>(t : &T) -> u64 {
+    fn djbhash<T:IterBytes>(t : &T) -> u64 {
         let mut state = DJBState::new();
         t.iter_bytes(true, |b| { state.write(b); true });
         state.flush();
@@ -32,7 +40,7 @@ impl Writer for DJBState {
     fn write(&mut self, buf : &[u8]) {
         let len = buf.len();
         let mut i = 0;
-        while i < len { self.hash = (33u64 * self.hash) ^ buf[i] as u64; i = i + 1; }        /* 3.1s */
+        while i < len { self.hash = (33u64 * self.hash) ^ buf[i] as u64; i += 1; }           /* 3.1s */
         // for i in range(0, len) { self.hash = (33u64 * self.hash) ^ buf[i] as u64 }        /* 3.6s */
         // for i in range(0, buf.len()) { self.hash = (33u64 * self.hash) ^ buf[i] as u64 }  /* 3.6s */
         // for byte in buf.iter() { self.hash = (33u64 * self.hash) ^ *byte as u64 }         /* 3.8s */
@@ -41,13 +49,13 @@ impl Writer for DJBState {
 }
 
 /* Original hash function */
-fn djbhash(bytes : &[u8]) -> u64 {
-    let mut hash = 5381u64;
-    for byte in bytes.iter() {
-            hash = (33u64 * hash) ^ *byte as u64;
-    }
-    return hash;
-}
+// fn djbhash(bytes : &[u8]) -> u64 {
+//     let mut hash = 5381u64;
+//     for byte in bytes.iter() {
+//             hash = (33u64 * hash) ^ *byte as u64;
+//     }
+//     return hash;
+// }
 
 /* ----------------------------------------------- */
 
@@ -113,7 +121,7 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
     #[inline]
     fn probe(&self, key : &K) -> uint {
         let mut free = None;
-        let mut hash = DJBState::djbhash_bytes(key);
+        let mut hash = DJBState::djbhash(key);
         let mut i = hash & self.mask;
         while !self.table[i].matches(key) {
             if free.is_none() && self.table[i].is_ghost() { free = Some(i); }
@@ -130,10 +138,10 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
     #[inline]
     fn probe_mut(&mut self, key : &K) -> uint {
         let mut free = None;
-        let mut hash = DJBState::djbhash_bytes(key);
-        let mut i = hash & (self.capacity as u64 - 1);
+        let mut hash = DJBState::djbhash(key);
+        let mut i = hash & self.mask;
         while !self.table[i].matches(key) {
-            self.collisions = self.collisions + 1;
+            self.collisions += 1;
             if free.is_none() && self.table[i].is_ghost() { free = Some(i); }
             i = ((5 * i) + 1 + hash) & self.mask;
             hash = hash >> PERTURB_SHIFT;
@@ -151,13 +159,13 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
             let mut new_tbl = HashMap::with_capacity( self.capacity * 2 );
             for elt in self.table.mut_iter() {
                 match util::replace(elt, Empty) {
-                    Empty | Ghost(_) => { },
                     Full(k,v)        => { new_tbl.insert(k,v); },
+                    Empty | Ghost(_) => { },
                 }
             }
-            // Copy new table's elements into self.
-            // Note: attempting to do this directly causes:
-            // "use of partially moved value"
+            // Copy new table's elements into self.  Note: attempting
+            // to do this directly causes: "use of partially moved
+            // value"
             let cap = new_tbl.capacity;
             let mask = new_tbl.mask;
             let len = new_tbl.length;
@@ -198,7 +206,7 @@ impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
         match self.table[i] {
             Empty | Ghost(_) => {
                 self.table[i] = Full(key,value);
-                self.length = self.length + 1;
+                self.length += 1;
                 None
             },
             Full(_,ref mut v) => {
@@ -255,11 +263,10 @@ impl<T : Eq + IterBytes> Set<T> for HashSet<T> {
     fn is_disjoint(&self, other : &HashSet<T>) -> bool {
         for elt in self.map.table.iter() {
             match *elt {
-                Empty => { },
-                Ghost(_) => { },
                 Full(ref k,_) => {
                     if other.contains(k) { return false; }
-                }
+                },
+                _ => { },
             }
         }
         return true;
@@ -268,11 +275,10 @@ impl<T : Eq + IterBytes> Set<T> for HashSet<T> {
     fn is_subset(&self, other : &HashSet<T>) -> bool {
         for elt in self.map.table.iter() {
             match *elt {
-                Empty => { },
-                Ghost(_) => { },
                 Full(ref k,_) => {
                     if !other.contains(k) { return false; }
-                }
+                },
+                _ => { },
             }
         }
         return true;
