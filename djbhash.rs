@@ -97,6 +97,7 @@ pub struct HashMap<K,V> {
     capacity   : uint,
     mask       : u64,
     length     : uint,
+    ghosts     : uint,
     collisions : uint,
 }
 
@@ -110,6 +111,7 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
             capacity : capacity,
             mask : (capacity as u64) - 1,
             length : 0,
+            ghosts : 0,
             collisions : 0,
         }
     }
@@ -120,8 +122,8 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
     // This algorithm gleefully stolen from Python
     #[inline]
     fn probe(&self, key : &K) -> uint {
-        let mut free = None;
         let mut hash = DJBState::djbhash(key);
+        let mut free = None;
         let mut i = hash & self.mask;
         while !self.table[i].matches(key) {
             if free.is_none() && self.table[i].is_ghost() { free = Some(i); }
@@ -137,8 +139,8 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
 
     #[inline]
     fn probe_mut(&mut self, key : &K) -> uint {
-        let mut free = None;
         let mut hash = DJBState::djbhash(key);
+        let mut free = None;
         let mut i = hash & self.mask;
         while !self.table[i].matches(key) {
             self.collisions += 1;
@@ -154,25 +156,36 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
     }
 
     #[inline]
-    fn expand(&mut self) {
-        if self.length * 2 > self.capacity {
-            let mut new_tbl = HashMap::with_capacity( self.capacity * 2 );
-            for elt in self.table.mut_iter() {
-                match util::replace(elt, Empty) {
-                    Full(k,v)        => { new_tbl.insert(k,v); },
-                    Empty | Ghost(_) => { },
-                }
+    fn do_expand(&mut self, new_capacity : uint) {
+        let mut new_tbl = HashMap::with_capacity( new_capacity );
+        for elt in self.table.mut_iter() {
+            match util::replace(elt, Empty) {
+                Full(k,v)        => { new_tbl.insert(k,v); },
+                Empty | Ghost(_) => { },
             }
-            // Copy new table's elements into self.  Note: attempting
-            // to do this directly causes: "use of partially moved
-            // value"
-            let cap = new_tbl.capacity;
-            let mask = new_tbl.mask;
-            let len = new_tbl.length;
-            self.table = new_tbl.table;
-            self.capacity = cap;
-            self.mask = mask;
-            self.length = len;
+        }
+        // Copy new table's elements into self.  Note: attempting
+        // to do this more directly causes: "use of partially moved
+        // value"
+        let cap = new_tbl.capacity;
+        let mask = new_tbl.mask;
+        let len = new_tbl.length;
+        let ghosts = new_tbl.ghosts;
+        self.table = new_tbl.table;
+        self.capacity = cap;
+        self.mask = mask;
+        self.length = len;
+        self.ghosts = ghosts;
+    }
+
+    #[inline]
+    fn expand(&mut self) {
+        if self.length * 3 > self.capacity * 2 {
+            // Expand table if live entries nearing capacity
+            self.do_expand( self.capacity * 2 );
+        } else if (self.length + self.ghosts) * 3 >= self.capacity * 2 {
+            // Rehash to flush out excess ghosts
+            self.do_expand( self.capacity );
         }
     }
 }
@@ -185,6 +198,7 @@ impl<K,V> Mutable for HashMap<K,V> {
     fn clear(&mut self) { 
         for elt in self.table.mut_iter() { *elt = Empty; }
         self.length = 0;
+        self.ghosts = 0;
     }
 }
 
@@ -204,9 +218,15 @@ impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
         self.expand();
         let i = self.probe_mut(&key);
         match self.table[i] {
-            Empty | Ghost(_) => {
+            Empty => {
                 self.table[i] = Full(key,value);
                 self.length += 1;
+                None
+            },
+            Ghost(_) => {
+                self.table[i] = Full(key,value);
+                self.length += 1;
+                self.ghosts -= 1;
                 None
             },
             Full(_,ref mut v) => {
@@ -216,16 +236,18 @@ impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
     }
 
     fn pop(&mut self, key: &K) -> Option<V> {
+        self.expand();
         let i = self.probe(key);
         let (result,replacement) = match util::replace(&mut self.table[i], Empty) {
             Empty     => (None,Empty),
             Ghost(k)  => (None,Ghost(k)),
             Full(k,v) => {
-                self.length = self.length - 1;
+                self.length -= 1;
+                self.ghosts += 1;
                 (Some(v),Ghost(k))
             },
         };
-        util::replace(&mut self.table[i], replacement);
+        self.table[i] = replacement;
         result
     }
 
@@ -233,7 +255,7 @@ impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
         let i = self.probe(key);
         match self.table[i] {
             Empty | Ghost(_)  => None,
-            Full(_,ref mut v) => Some(v),
+            Full(_,ref mut val) => Some(val),
         }
     }
 }
