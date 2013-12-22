@@ -98,7 +98,6 @@ pub struct HashMap<K,V> {
     mask       : u64,
     length     : uint,
     ghosts     : uint,
-    collisions : uint,
 }
 
 impl<K : Eq + IterBytes,V> HashMap<K,V> {
@@ -112,12 +111,10 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
             mask : (capacity as u64) - 1,
             length : 0,
             ghosts : 0,
-            collisions : 0,
         }
     }
 
     pub fn capacity(&self) -> uint { self.capacity }
-    pub fn collisions(&self) -> uint { self.collisions }
 
     // This algorithm gleefully stolen from Python
     #[inline]
@@ -126,24 +123,6 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
         let mut free = None;
         let mut i = hash & self.mask;
         while !self.table[i].matches(key) {
-            if free.is_none() && self.table[i].is_ghost() { free = Some(i); }
-            i = ((5 * i) + 1 + hash) & self.mask;
-            hash = hash >> PERTURB_SHIFT;
-        }
-        if self.table[i].is_full() || free.is_none() {
-            i as uint
-        } else {
-            free.unwrap() as uint
-        }
-    }
-
-    #[inline]
-    fn probe_mut(&mut self, key : &K) -> uint {
-        let mut hash = DJBState::djbhash(key);
-        let mut free = None;
-        let mut i = hash & self.mask;
-        while !self.table[i].matches(key) {
-            self.collisions += 1;
             if free.is_none() && self.table[i].is_ghost() { free = Some(i); }
             i = ((5 * i) + 1 + hash) & self.mask;
             hash = hash >> PERTURB_SHIFT;
@@ -216,7 +195,7 @@ impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
 
     fn swap(&mut self, key: K, value: V) -> Option<V> {
         self.expand();
-        let i = self.probe_mut(&key);
+        let i = self.probe(&key);
         match self.table[i] {
             Empty => {
                 self.table[i] = Full(key,value);
@@ -326,6 +305,8 @@ impl<T : Eq + IterBytes> MutableSet<T> for HashSet<T> {
 
 #[cfg(test)]
 mod tests {
+    extern mod extra;
+
     use super::*;
 
     #[test]
@@ -372,5 +353,17 @@ mod tests {
         assert_eq!(m.len(),8);
         assert_eq!(m.capacity(),16);
         assert!( !m.insert(3, 12000) );
+    }
+
+    #[bench]
+    fn hash_bench_siphash(b: &mut extra::test::BenchHarness) {
+        let s = "abcdefghijklmnopqrstuvwxyz";
+        do b.iter { s.hash(); }
+    }
+
+    #[bench]
+    fn hash_bench_djbhash(b: &mut extra::test::BenchHarness) {
+        let s = "abcdefghijklmnopqrstuvwxyz";
+        do b.iter { DJBState::djbhash(&s); }
     }
 }

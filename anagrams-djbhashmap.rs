@@ -73,6 +73,5 @@ fn main() {
     // duration("load_dictionary", start, time::get_time());
     let set = search(letters,dictionary);
     // duration("search", start, time::get_time());
-    println!("collisions {:u} capacity {:u} len {:u}", dictionary.collisions(), dictionary.capacity(), dictionary.len());
     println!("{:u}", set.len());
 }
