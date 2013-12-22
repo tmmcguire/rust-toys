@@ -14,6 +14,10 @@ fn duration(f : &fn () -> ()) -> time::Timespec {
         time::Timespec { sec : d_sec - 1, nsec : d_nsec + 1000000000 }
     }
 }
+
+fn to_float(t : &time::Timespec) -> float {
+    (t.sec as float) + ((t.nsec as float) / 1000000000.0f)
+}
     
 fn thirtythree_million_siphashes() {
     use std::hash::*;
@@ -21,7 +25,7 @@ fn thirtythree_million_siphashes() {
     let s = ~"abcdefghijklmnopqrstuvwxyz";
     let mut potato = 0u64;
     do 33000000.times {
-        potato ^= s.hash();
+        potato += s.hash();
     }
     println!("{:?}", potato);
 }
@@ -38,12 +42,12 @@ fn thirtythree_million_djbhashes() {
     let s = ~"abcdefghijklmnopqrstuvwxyz";
     let mut potato = 0u64;
     do 33000000.times {
-        potato ^= djbhash(s.as_bytes());
+        potato += djbhash(s.as_bytes());
     }
     println!("{:?}", potato);
 }
 
 fn main() {
-    println!("sip: {:?}", duration(thirtythree_million_siphashes));
-    println!("djb: {:?}", duration(thirtythree_million_djbhashes));
+    println!("sip: {:?}", to_float(&duration(thirtythree_million_siphashes)));
+    println!("djb: {:?}", to_float(&duration(thirtythree_million_djbhashes)));
 }
