@@ -10,6 +10,7 @@ PROGS  = anagrams-hashmap-wide anagrams-hashmap \
 	 anagrams-djbhashmap anagrams-djbhash-tasks \
          mk_anadict mk_anadict_traits \
          $(ALT)/anagrams-hash $(ALT)/anagrams-vectors \
+         $(ALT)/mk_anadict $(ALT)/nimrod_anagrams \
          complex hashing-performance
 
 PYTHON = $(ALT)/mk_anadict.py $(ALT)/presser_one.py $(ALT)/presser_two.py $(ALT)/presser_three.py
@@ -49,3 +50,6 @@ clean :
 
 % : %.rs
 	rustc -L . -O $<
+
+% : %.nim
+	nimrod compile -d:release $<
