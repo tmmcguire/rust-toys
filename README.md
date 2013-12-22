@@ -40,29 +40,28 @@ Python alternatives
 
 Taken directly from Jeff Knupp.
 
-* **mk_anadict.py**
-* **presser_one.py**
-* **presser_three.py**
-* **presser_two.py**
+* **alternatives/mk_anadict.py**
+* **alternatives/presser_one.py**
+* **alternatives/presser_three.py**
+* **alternatives/presser_two.py**
 
 C alternatives
 --------------
 
 Quick and dirty implementations in C.
 
-* **anagrams-hash.c**
-* **anagrams-vectors.c**
+* **alternatives/anagrams-hash.c**
+* **alternatives/anagrams-vectors.c**
 
-Nimrod alternatives
--------------------
+[Nimrod](http://nimrod-lang.org/) alternatives
+----------------------------------------------
 
-* **mk_anadict.nim** A first Nimrod program!
-* **nimrod_anagrams.nim** A second Nimrod program!
+* **alternatives/mk_anadict.nim** A first Nimrod program!
+* **alternatives/nimrod_anagrams.nim** A second Nimrod program!
 
 
 Other programs
 --------------
 
 * **complex.rs** Operator overloading example.
-
 * **hashing-performance.rs** Quick and dirty hash function benchmark.
