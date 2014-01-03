@@ -58,7 +58,7 @@ fn search(argument : &[u8], keys : &[~[u8]], values : &[~[~str]]) -> ~HashSet<~s
 }
 
 fn main() {
-    let width = 6;
+    let width = 3;
 
     let args = os::args();
     if args.len() < 2 { fail!(~"Usage: anagrams letters"); }

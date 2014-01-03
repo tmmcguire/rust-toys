@@ -53,7 +53,7 @@ fn search(letters : &[u8], dictionary : &HashMap<~[u8],~[~str]>) -> ~HashSet<~st
 }
 
 fn main() {
-    let width = 6;
+    let width = 3;
 
     let args = os::args();
     if args.len() < 2 { fail!(~"Usage: anagrams letters"); }
