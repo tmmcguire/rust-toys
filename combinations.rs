@@ -1,9 +1,9 @@
-#[ link(name = "combinations", vers="1.0") ];
+#[ crate_id = "combinations#1.0" ];
 #[ crate_type = "lib" ];
 
 extern mod std;
 
-use std::*;
+use std::vec;
 
 /// Iterate over `r`-length subsequences of elements from `values`.
 ///
@@ -32,7 +32,7 @@ use std::*;
 /// This function gleefully stolen from Python
 /// [`itertools.combinations`](http://docs.python.org/2/library/itertools.html#itertools.combinations).
 #[inline]
-pub fn each_combination<T:Clone>(values : &[T], r : uint, fun : &fn(combo : &[T])) {
+pub fn each_combination<T:Clone>(values : &[T], r : uint, fun : |combo:&[T]| -> ()) {
     let length          = values.len();
     if r == 0 || r > length { return; }
     let max_indices0    = length - r;
@@ -79,7 +79,7 @@ pub fn each_combination<T:Clone>(values : &[T], r : uint, fun : &fn(combo : &[T]
 ///
 /// * `fun` - The function to iterate over the combinations
 #[inline]
-pub fn each_combination_ref<'v,T>(values : &'v [T], r : uint, fun : &fn(combo : &[&'v T])) {
+pub fn each_combination_ref<'v,T>(values : &'v [T], r : uint, fun : |combo:&[&'v T]| -> ()) {
     each_combination(vec::from_fn(values.len(), |i| &values[i]), r, fun);
 }
 
@@ -143,7 +143,7 @@ pub fn reverse_part<T>(v : &mut [T], start : uint, end : uint) {
 /// chosen
 ///
 /// * `fun` - The function to iterate over the combinations
-pub fn each_permutation<T : Clone>(values : &[T], fun : &fn(perm : &[T]) -> bool) {
+pub fn each_permutation<T : Clone>(values : &[T], fun : |perm:&[T]| -> bool) {
     let length = values.len();
     let mut permutation = vec::from_fn(length, |i| values[i].clone());
     if length <= 1 {
@@ -194,7 +194,7 @@ pub fn each_permutation<T : Clone>(values : &[T], fun : &fn(perm : &[T]) -> bool
 /// chosen
 ///
 /// * `fun` - The function to iterate over the permutations
-pub fn each_permutation_ref<'v,T>(values : &'v [T], fun : &fn(perm : &[&'v T]) -> bool) {
+pub fn each_permutation_ref<'v,T>(values : &'v [T], fun : |perm:&[&'v T]| -> bool) {
     each_permutation(vec::from_fn(values.len(), |i| &values[i]), fun);
 }
 

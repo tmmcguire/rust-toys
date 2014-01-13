@@ -1,36 +1,31 @@
-extern mod extra;
-
 extern mod combinations;
 extern mod bisect;
 
-use std::{vec,iter,os,util};
-use std::comm::*;
-use std::io::*;
-use std::hashmap::*;
+use std::{os,vec,util};
+use std::io::File;
+use std::io::buffered::BufferedReader;
+use std::hashmap::HashSet;
 use std::task::spawn;
 
-pub fn split_words(s : &str) -> ~[~str] { s.word_iter().map(|w| w.to_owned()).collect() }
+pub fn split_words(s : &str) -> ~[~str] { s.words().map(|w| w.to_owned()).collect() }
 
 fn load_dictionary() -> (~[~[u8]],~[~[~str]]) {
-    match file_reader(&Path("anadict.txt")) {
-        Ok(reader) => {
-            let mut keys = ~[];
-            let mut values = ~[];
-            reader.each_line(|line| {
-                    let words = split_words(line);
-                    keys.push( vec::from_fn(words[0].len(), |i| words[0][i] as u8) );
-                    values.push( vec::from_fn(words.len() - 1, |i| words[i+1].clone()) );
-                    true
-                });
-            return (keys,values);
-        }
-        Err(msg) => { fail!(msg); }
+    let path = Path::new("anadict.txt");
+    let file = File::open(&path);
+    let mut bufferedFile = BufferedReader::new(file);
+    let mut keys = ~[];
+    let mut values = ~[];
+    for line in bufferedFile.lines() {
+        let words = split_words(line);
+        keys.push( vec::from_fn(words[0].len(), |i| words[0][i] as u8) );
+        values.push( vec::from_fn(words.len() - 1, |i| words[i+1].clone()) );
     }
+    return (keys,values);
 }
 
 fn get_letters(s : &str) -> ~[u8] {
-    let mut t : ~[char] = s.iter().collect();
-    extra::sort::quick_sort(t, |a,b| *a <= *b);
+    let mut t : ~[char] = s.chars().collect();
+    t.sort();
     return vec::from_fn(t.len(), |i| t[i] as u8);
 }
 
@@ -62,12 +57,11 @@ fn main() {
     }
     let letters = get_letters(args[1]);
 
-    let (response_port,response_chan) = stream();
-    let response_chan = SharedChan::new(response_chan);
+    let (response_port, response_chan) = SharedChan::new();
 
     let mut request_chans : ~[Chan<~[~[u8]]>] = ~[];
-    do width.times() {
-        let (request_port,request_chan) = stream();
+    for _ in range(0, width) {
+        let (request_port,request_chan) = Chan::new();
         request_chans.push(request_chan);
         // Set up and start worker task
         let response_chan = response_chan.clone();
@@ -79,10 +73,9 @@ fn main() {
 
     let mut t = 0;
     let mut key_set = ~[];
-    for i in iter::range(2,letters.len() + 1) {
-        do combinations::each_combination(letters,i) |combo| {
+    for i in range(2,letters.len() + 1) {
+        combinations::each_combination(letters, i, |combo| {
             key_set.push( combo.to_owned() );
-            // key_set.push( vec::from_slice(combo) );
             if key_set.len() >= depth {
                 let mut ks = ~[];
                 // ks <-> key_set;
@@ -90,13 +83,13 @@ fn main() {
                 request_chans[t].send(ks);
                 t = (t + 1) % width;
             }
-        }
+        });
     }
     if !key_set.is_empty() { request_chans[t].send(key_set); }
     for chan in request_chans.iter() { chan.send(~[]) };
 
     let mut set : ~HashSet<~str> = ~HashSet::new();
-    do width.times() {
+    for _ in range(0, width) {
         let response_set = response_port.recv();
         for word in response_set.iter() { set.insert(word.clone()); }
     }

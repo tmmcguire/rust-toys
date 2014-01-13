@@ -1,37 +1,29 @@
-extern mod extra;
+extern mod combinations;
 
 use std::{vec,os};
-use std::comm::*;
-use std::io::*;
-use std::hashmap::*;
+use std::io::File;
+use std::io::buffered::BufferedReader;
+use std::hashmap::{HashMap, HashSet};
 
-mod combinations;
-mod bisect;
-
-pub fn split_words(s : &str) -> ~[~str] { s.word_iter().map(|w| w.to_owned()).collect() }
+pub fn split_words(s : &str) -> ~[~str] { s.words().map(|w| w.to_owned()).collect() }
 
 fn load_dictionaries(width : uint) -> ~[~HashMap<~[u8],~[~str]>] {
-    match file_reader(&Path("anadict.txt")) {
-        Ok(reader) => {
-            let mut maps = vec::from_fn(width, |_| ~HashMap::new());
-            let mut t = 0;
-            reader.each_line(|line| {
-                    let words = split_words(line);
-                    let key : ~[char] = words[0].iter().collect();
-                    maps[t].insert(vec::from_fn(key.len(), |i| key[i] as u8),
-                                   vec::from_fn(words.len() - 1, |i| words[i+1].clone()));
-                    t = (t + 1) % width;
-                    true
-                });
-            return maps;
-        }
-        Err(msg) => { fail!(msg); }
+    let mut bufferedFile = BufferedReader::new( File::open( &Path::new("anadict.txt") ) );
+    let mut maps = vec::from_fn(width, |_| ~HashMap::new());
+    let mut t = 0;
+    for line in bufferedFile.lines() {
+        let words = split_words(line);
+        let key : ~[char] = words[0].chars().collect();
+        maps[t].insert(vec::from_fn(key.len(), |i| key[i] as u8),
+                       vec::from_fn(words.len() - 1, |i| words[i+1].clone()));
+        t = (t+1) % width;
     }
+    return maps;
 }
 
 fn get_letters(s : &str) -> ~[u8] {
-    let mut t : ~[char] = s.iter().collect();
-    extra::sort::quick_sort(t, |a,b| *a <= *b);
+    let mut t : ~[char] = s.chars().collect();
+    t.sort();
     return vec::from_fn(t.len(), |i| t[i] as u8);
 }
 
@@ -39,7 +31,7 @@ fn search(letters : &[u8], dictionary : &HashMap<~[u8],~[~str]>) -> ~HashSet<~st
     let mut set = ~HashSet::new();
     for i in range(2, letters.len() + 1) {
         let mut key = vec::from_elem(i, 0u8);
-        do combinations::each_combination(letters,i) |combo| {
+        combinations::each_combination(letters, i, |combo| {
             for j in range(0, combo.len()) { key[j] = combo[j]; }
             match dictionary.find(&key) {
                 Some(ref val) => {
@@ -47,7 +39,7 @@ fn search(letters : &[u8], dictionary : &HashMap<~[u8],~[~str]>) -> ~HashSet<~st
                 }
                 None => { }
             }
-        }
+        });
     }
     return set;
 }
@@ -61,8 +53,7 @@ fn main() {
 
     let dictionaries = load_dictionaries(width);
 
-    let (response_port,response_chan) = stream();
-    let response_chan = SharedChan::new(response_chan);
+    let (response_port, response_chan) = SharedChan::new();
 
     for dictionary in dictionaries.iter() {
         let response_chan = response_chan.clone();
@@ -74,10 +65,10 @@ fn main() {
     }
 
     let mut set : ~HashSet<~str> = ~HashSet::new();
-    do width.times() {
+    for _ in range(0, width) {
         let response_set = response_port.recv();
         for word in response_set.iter() { set.insert(word.clone()); }
-        // 0.7:
+        // 0.7, 0.8, 0.9:
         // for response_port.recv().iter().advance |&word| { set.insert(word); }
         // produces:
         // anagrams-hashmap-wide.rs:81:12: 81:33 error: borrowed value does not live long enough

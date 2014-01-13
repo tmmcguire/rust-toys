@@ -1,14 +1,16 @@
+#[ feature(macro_rules) ];
+
 use std::num;
 use std::num::NumCast;
 
 struct Complex {
-    r : float,
-    j : float
+    r : f64,
+    j : f64
 }
 
 impl Complex {
     fn conjugate(&self) -> Complex { Complex { j : -self.j, .. *self } }
-    fn magnitude(&self) -> float { num::sqrt( self.r * self.r + self.j * self.j ) }
+    fn magnitude(&self) -> f64 { num::sqrt( self.r * self.r + self.j * self.j ) }
 }
 
 impl ToStr for Complex {
@@ -17,14 +19,14 @@ impl ToStr for Complex {
 
 trait ToComplex { fn to_complex(&self) -> Complex; }
 
-impl ToComplex for float {
-    fn to_complex(&self) -> Complex { Complex { r : *self, j : 0.0f } }
+impl ToComplex for f64 {
+    fn to_complex(&self) -> Complex { Complex { r : *self, j : 0.0f64 } }
 }
 
 // Can't do this:
 
-// impl Add<float,Complex> for Complex {
-//     fn add(&self, rhs : &float) -> Complex {
+// impl Add<f64,Complex> for Complex {
+//     fn add(&self, rhs : &f64) -> Complex {
 //         Complex { r : self.r + *rhs, j : self.j }
 //     }
 // }
@@ -73,19 +75,19 @@ macro_rules! scalar_impl(
     ($foo:ty) => (
         impl ComplexRhs for $foo {
             fn add_complex(&self, lhs: &Complex) -> Complex {
-                Complex { r : lhs.r + (*self as float), j : lhs.j }
+                Complex { r : lhs.r + (*self as f64), j : lhs.j }
             }
             fn sub_complex(&self, lhs: &Complex) -> Complex {
-                Complex { r : lhs.r - (*self as float), j : lhs.j }
+                Complex { r : lhs.r - (*self as f64), j : lhs.j }
             }
             fn mul_complex(&self, lhs: &Complex) -> Complex {
-                Complex { r : (lhs.r * (*self as float)), j : (lhs.j * (*self as float)) }
+                Complex { r : (lhs.r * (*self as f64)), j : (lhs.j * (*self as f64)) }
             }
         }
     )
 )
 
-scalar_impl!(float)
+scalar_impl!(f64)
 scalar_impl!(int)
 scalar_impl!(uint)
 
@@ -98,37 +100,27 @@ impl Div<Complex,Complex> for Complex {
     }
 }
 
+impl ToPrimitive for Complex {
+    fn to_i64(&self)   -> Option<i64>   { Some(self.magnitude() as i64)   }
+    fn to_u64(&self)   -> Option<u64>   { Some(self.magnitude() as u64)   }
+    fn to_f64(&self)   -> Option<f64>   { Some(self.magnitude() as f64)   }
+}
+
 impl NumCast for Complex {
-    fn from<N:NumCast>(n: N) -> Complex { n.to_float().to_complex() }
-
-    fn to_u8(&self)    -> u8    { self.magnitude() as u8    }
-    fn to_u16(&self)   -> u16   { self.magnitude() as u16   }
-    fn to_u32(&self)   -> u32   { self.magnitude() as u32   }
-    fn to_u64(&self)   -> u64   { self.magnitude() as u64   }
-    fn to_uint(&self)  -> uint  { self.magnitude() as uint  }
-
-    fn to_i8(&self)    -> i8    { self.magnitude() as i8    }
-    fn to_i16(&self)   -> i16   { self.magnitude() as i16   }
-    fn to_i32(&self)   -> i32   { self.magnitude() as i32   }
-    fn to_i64(&self)   -> i64   { self.magnitude() as i64   }
-    fn to_int(&self)   -> int   { self.magnitude() as int   }
-
-    fn to_f32(&self)   -> f32   { self.magnitude() as f32   }
-    fn to_f64(&self)   -> f64   { self.magnitude() as f64   }
-    fn to_float(&self) -> float { self.magnitude()          }
+    fn from<N:NumCast>(n: N) -> Option<Complex> { n.to_f64().map( |v| v.to_complex() ) }
 }
 
 fn main() {
     let x = Complex { r : 1.0, j : 0.0 };
     let y = Complex { r : 3.0, j : 0.0 };
     let z = x + y;
-    let w = NumCast::from(2);
-    println(( y + 3.0f                ).to_str());
-    println(( y + 3.0f.to_complex()   ).to_str());
-    println(( y + 3                   ).to_str());
-    println(( x * 3.0f                ).to_str());
-    println(( x * 4                   ).to_str());
-    println(( z / w                   ).to_str());
+    let w = NumCast::from(2).unwrap();
+    println(( y + 3.0f64                ).to_str());
+    println(( y + 3.0f64.to_complex()   ).to_str());
+    println(( y + 3                     ).to_str());
+    println(( x * 3.0f64                ).to_str());
+    println(( x * 4                     ).to_str());
+    println(( z / w                     ).to_str());
 
     let n = Complex { r : 0.0, j : 1.0 };
     println(( n * n                   ).to_str());

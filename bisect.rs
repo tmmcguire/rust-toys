@@ -1,4 +1,4 @@
-#[ link(name = "bisect", vers="1.0") ];
+#[ crate_id = "bisect#1.0" ];
 #[ crate_type = "lib" ];
 
 extern mod std;
@@ -54,7 +54,7 @@ pub fn bisect_left_with_compare<T>(a : &[T],
                                    x : &T, 
                                    lo : uint, 
                                    hi : uint,  
-                                   lt : &fn (l:&T,r:&T)->bool) -> uint {
+                                   lt : |l:&T,r:&T| -> bool) -> uint {
     let mut lo = lo;
     let mut hi = hi;
     while lo < hi {

@@ -6,10 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[ link(name = "djbhash", vers="1.0") ];
+#[ crate_id = "djbhash#1.0" ];
 #[ crate_type = "lib" ];
 
-use std::rt::io::Writer;
+use std::io::Writer;
 use std::to_bytes::IterBytes;
 use std::vec;
 use std::uint;
@@ -79,9 +79,9 @@ enum Entry<K,V> {
 }
 
 impl<K : Eq, V> Entry<K,V> {
-    fn is_empty(&self) -> bool { match *self { Empty => true, _ => false } }
-    fn is_full(&self)  -> bool { match *self { Full(*) => true, _ => false } }
-    fn is_ghost(&self) -> bool { match *self { Ghost(*) => true, _ => false } }
+    // fn is_empty(&self) -> bool { match *self { Empty => true, _ => false } }
+    fn is_full(&self)  -> bool { match *self { Full(..) => true, _ => false } }
+    fn is_ghost(&self) -> bool { match *self { Ghost(..) => true, _ => false } }
 
     #[inline]
     fn matches(&self, key : &K) -> bool {
@@ -307,7 +307,7 @@ impl<T : Eq + IterBytes> MutableSet<T> for HashSet<T> {
 mod tests {
     extern mod extra;
 
-    use super::*;
+//    use super::*;
 
     #[test]
     fn test_empty() {

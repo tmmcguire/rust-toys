@@ -2,7 +2,7 @@ extern mod extra;
 
 use extra::time;
 
-fn duration(f : &fn () -> ()) -> time::Timespec {
+fn duration(f : || -> ()) -> time::Timespec {
     let start = time::get_time();
     f();
     let end = time::get_time();
@@ -15,16 +15,14 @@ fn duration(f : &fn () -> ()) -> time::Timespec {
     }
 }
 
-fn to_float(t : &time::Timespec) -> float {
-    (t.sec as float) + ((t.nsec as float) / 1000000000.0f)
+fn to_float(t : &time::Timespec) -> f64 {
+    (t.sec as f64) + ((t.nsec as f64) / 1000000000.0f64)
 }
     
 fn thirtythree_million_siphashes() {
-    use std::hash::*;
-
     let s = ~"abcdefghijklmnopqrstuvwxyz";
     let mut potato = 0u64;
-    do 33000000.times {
+    for _ in range(0, 33000000) {
         potato += s.hash();
     }
     println!("{:?}", potato);
@@ -41,7 +39,7 @@ fn djbhash(bytes : &[u8]) -> u64 {
 fn thirtythree_million_djbhashes() {
     let s = ~"abcdefghijklmnopqrstuvwxyz";
     let mut potato = 0u64;
-    do 33000000.times {
+    for _ in range(0, 33000000) {
         potato += djbhash(s.as_bytes());
     }
     println!("{:?}", potato);

@@ -1,53 +1,42 @@
 extern mod extra;
 
-use std::{vec,str};
-use std::io::*;
-use std::result::*;
-use std::hashmap::*;
+use std::str;
+use std::hashmap::HashMap;
+use std::io::{File,Truncate,Write};
+use std::io::buffered::BufferedReader;
 
-fn read_dict(reader : @Reader) -> ~HashMap<~str,~[~str]> {
+fn read_dict<R:Reader>(reader : &mut BufferedReader<R>) -> ~HashMap<~str,~[~str]> {
     let mut map = ~HashMap::new();
-    reader.each_line(|line| {
-            let line   = line.trim();
-            let length = line.len();
-            // Original is using pre-strip() line for comparisons
-            if length >= 2 && length < 19 && line.iter().all(|ch| (ch.is_ascii() && ch.is_lowercase())) {
-                let mut chars : ~[char] = line.iter().collect();
-                extra::sort::quick_sort(chars, |a,b| *a <= *b);
-                let key = str::from_chars(chars);
-
-                let mut value = match map.pop(&key) {
-                    None => { ~[] }
-                    Some(old) => { old }
-                };
-                value.push(line.to_owned());
-                map.insert(key,value);
-            }
-            true
-        });
+    for line in reader.lines() {
+        let line   = line.trim();
+        let length = line.len();
+        // Original is using pre-strip() line for comparisons
+        if length >= 2 && length < 19 && line.chars().all(|ch| (ch.is_ascii() && ch.is_lowercase())) {
+            let mut chars : ~[char] = line.chars().collect();
+            chars.sort();
+            let key = str::from_chars(chars);
+            map.find_or_insert(key, ~[]).push( line.to_owned() )
+        }
+    }
     return map;
 }
 
 fn sorted_keys<V:Clone>(dict : &HashMap<~str,V>) -> ~[~str] {
-    let mut keys = vec::with_capacity( dict.len() );
-    dict.each_key(|key| { keys.push(key.clone()); true });
-    extra::sort::quick_sort(keys, |a,b| *a <= *b);
+    let mut keys : ~[~str] = dict.keys().map( |k| k.clone() ).collect();
+    keys.sort();
     return keys;
 }
 
-fn print_dict(writer : @Writer, dict : &HashMap<~str,~[~str]>) {
+fn print_dict(writer : &mut Option<File>, dict : &HashMap<~str,~[~str]>) {
     let skeys = sorted_keys(dict);
     for key in skeys.iter() {
         let line : ~str = dict.get(key).connect(" ");
-        writer.write_str( fmt!("%s %s\n", *key, line) );
+        writer.write_str( format!("{:s} {:s}\n", *key, line) );
     }
 }
 
 fn main() {
-    match (file_reader(&Path("/usr/share/dict/words")),
-           file_writer(&Path("anadict.txt"), [Create,Truncate])) {
-        (Ok(r),    Ok(w))    => { print_dict(w, read_dict(r)); }
-        (Err(msg), _)        => { fail!(msg); }
-        (_,        Err(msg)) => {fail!(msg); }
-    }
+    let mut words_file = BufferedReader::new( File::open( &Path::new("/usr/share/dict/words") ) );
+    let mut dict_file = File::open_mode( &Path::new("anadict.txt"), Truncate, Write );
+    print_dict( &mut dict_file, read_dict( &mut words_file ) );
 }

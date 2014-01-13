@@ -1,48 +1,46 @@
-extern mod extra;
+// extern mod extra;
 
 extern mod combinations;
 extern mod bisect;
+extern mod djbhash;
 
 use std::{vec,iter,os,util};
-use std::comm;
-use std::comm::SharedChan;
-use std::io::*;
-use std::hashmap::*;
-use std::task::spawn;
-use extra::time;
+use std::io::File;
+use std::io::buffered::BufferedReader;
+// use extra::time;
 
-fn duration(tag : &str, start : time::Timespec, end : time::Timespec) {
-    let d_sec = end.sec - start.sec;
-    let d_nsec = end.nsec - start.nsec;
-    if d_nsec >= 0 {
-        println!("{:s}: {:?}", tag, time::Timespec { sec : d_sec, nsec : d_nsec });
-    } else {
-        println!("{:s}: {:?}", tag, time::Timespec { sec : d_sec - 1, nsec : d_nsec + 1000000000 });
-    }
-}
+use djbhash::HashMap;
+use std::hashmap::HashSet;
 
-pub fn split_words(s : &str) -> ~[~str] { s.word_iter().map(|w| w.to_owned()).collect() }
+// fn duration(tag : &str, start : time::Timespec, end : time::Timespec) {
+//     let d_sec = end.sec - start.sec;
+//     let d_nsec = end.nsec - start.nsec;
+//     if d_nsec >= 0 {
+//         println!("{:s}: {:?}", tag, time::Timespec { sec : d_sec, nsec : d_nsec });
+//     } else {
+//         println!("{:s}: {:?}", tag, time::Timespec { sec : d_sec - 1, nsec : d_nsec + 1000000000 });
+//     }
+// }
+
+pub fn split_words(s : &str) -> ~[~str] { s.words().map(|w| w.to_owned()).collect() }
 
 fn load_dictionary() -> ~HashMap<~[u8],~[~str]> {
-    match file_reader(&Path("anadict.txt")) {
-        Ok(reader) => {
-            let mut map = ~HashMap::new();
-            reader.each_line(|line| {
-                    let words = split_words(line);
-                    let key : ~[char] = words[0].iter().collect();
-                    map.insert(vec::from_fn(key.len(),       |i| key[i] as u8),
-                               vec::from_fn(words.len() - 1, |i| words[i+1].clone()));
-                    true
-                });
-            return map;
-        }
-        Err(msg) => { fail!(msg); }
+    let path = Path::new("anadict.txt");
+    let file = File::open(&path);
+    let mut bufferedFile = BufferedReader::new(file);
+    let mut map = ~HashMap::new();
+    for line in bufferedFile.lines() {
+        let words = split_words(line);
+        let key : ~[char] = words[0].chars().collect();
+        map.insert(vec::from_fn(key.len(), |i| key[i] as u8),
+                   vec::from_fn(words.len() - 1, |i| words[i+1].clone()));
     }
+    return map;
 }
 
 fn get_letters(s : &str) -> ~[u8] {
-    let mut t : ~[char] = s.iter().collect();
-    extra::sort::quick_sort(t, |a,b| *a <= *b);
+    let mut t : ~[char] = s.chars().collect();
+    t.sort();
     return vec::from_fn(t.len(), |i| t[i] as u8);
 }
 
@@ -64,11 +62,10 @@ fn search(dictionary : &HashMap<~[u8],~[~str]>, request_port : &Port<~[~[u8]]>) 
 }
 
 fn spawn_workers(n_workers : uint) -> (Port<~HashSet<~str>>,~[Chan<~[~[u8]]>]) {
-    let (response_port, response_chan) = comm::stream();
-    let response_chan = SharedChan::new(response_chan);
+    let (response_port, response_chan) = SharedChan::new();
     let mut request_chans : ~[Chan<~[~[u8]]>] = ~[];
-    do n_workers.times() {
-        let (request_port,request_chan) = comm::stream();
+    for _ in range(0, n_workers) {
+        let (request_port,request_chan) = Chan::new();
         request_chans.push(request_chan);
         // Set up and start worker task
         let response_chan = response_chan.clone();
@@ -97,7 +94,7 @@ fn main() {
     let mut worker = 0;
     let mut key_set = ~[];
     for i in iter::range(2,letters.len() + 1) {
-        do combinations::each_combination(letters,i) |combo| {
+        combinations::each_combination(letters, i, |combo| {
             key_set.push( combo.to_owned() );
             if key_set.len() >= depth {
                 let mut ks = ~[];
@@ -105,7 +102,7 @@ fn main() {
                 request_chans[worker].send(ks);
                 worker = (worker + 1) % width;
             }
-        }
+        });
     }
     // Send remaining combinations (key_set) to the next worker.
     if !key_set.is_empty() { request_chans[worker].send(key_set); }
@@ -114,7 +111,7 @@ fn main() {
 
     // Collect responses from workers.
     let mut set : ~HashSet<~str> = ~HashSet::new();
-    do width.times() {
+    for _ in range(0, width) {
         let response_set = response_port.recv();
         for word in response_set.iter() { set.insert(word.clone()); }
     }
