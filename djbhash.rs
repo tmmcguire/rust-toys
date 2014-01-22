@@ -167,6 +167,11 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
             self.do_expand( self.capacity );
         }
     }
+
+    #[inline]
+    pub fn iter<'a>(&'a self) -> HashMapIterator<'a, K, V> {
+        HashMapIterator { iterator : self.table.iter() }
+    }
 }
 
 impl<K,V> Container for HashMap<K,V> {
@@ -239,6 +244,24 @@ impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
     }
 }
 
+
+pub struct HashMapIterator<'a,K,V> {
+    priv iterator : vec::VecIterator<'a,Entry<K,V>>,
+}
+
+impl<'a,K,V> Iterator<(&'a K, &'a V)> for HashMapIterator<'a,K,V> {
+    fn next(&mut self) -> Option<(&'a K, &'a V)> {
+        for elt in self.iterator {
+            match *elt {
+                Empty | Ghost(_)       => { },
+                Full(ref key, ref val) => { return Some((key, val)) },
+            }
+        }
+        return None;
+    }
+}
+
+
 /* ----------------------------------------------- */
 
 pub struct HashSet<T> {
@@ -247,8 +270,11 @@ pub struct HashSet<T> {
 
 impl<T : Eq + IterBytes> HashSet<T> {
     pub fn new() -> HashSet<T> { HashSet { map : HashMap::new() } }
-}
-    
+
+    pub fn iter<'a>(&'a self) -> HashSetIterator<'a, T> {
+        HashSetIterator { iterator: self.map.iter() }
+    }
+}    
 
 impl<T> Container for HashSet<T> {
     fn len(&self) -> uint { self.map.len() }
@@ -300,6 +326,19 @@ impl<T : Eq + IterBytes> MutableSet<T> for HashSet<T> {
     }
 }
 
+pub struct HashSetIterator<'a,T> {
+    priv iterator : HashMapIterator<'a,T,()>,
+}
+
+impl<'a,T> Iterator<&'a T> for HashSetIterator<'a,T> {
+    fn next(&mut self) -> Option<&'a T> {
+        for (k,_) in self.iterator {
+            return Some(k);
+        }
+        return None;
+    }
+}
+
 
 /* ----------------------------------------------- */
 
@@ -307,7 +346,7 @@ impl<T : Eq + IterBytes> MutableSet<T> for HashSet<T> {
 mod tests {
     extern mod extra;
 
-//    use super::*;
+    use super::{DJBState,HashMap,HashSet};
 
     #[test]
     fn test_empty() {
@@ -315,6 +354,10 @@ mod tests {
         assert_eq!(m.len(), 0);
         assert_eq!(m.capacity(), 8);
         assert_eq!(m.find(&1), None);
+
+        let mut count = 0;
+        for (_,_) in m.iter() { count += 1; }
+        assert_eq!(count, 0);
     }
 
     #[test]
@@ -336,6 +379,11 @@ mod tests {
             Some(y) => assert_eq!(*y,500),
             None => fail!("failure again!")
         }
+
+        let mut count = 0;
+        for (_,_) in m.iter() { count += 1; }
+        assert_eq!(count, 1);
+
         match m.pop(&1) {
             Some(y) => assert_eq!(y,500),
             None => fail!("oh, noes!")
@@ -353,17 +401,49 @@ mod tests {
         assert_eq!(m.len(),8);
         assert_eq!(m.capacity(),16);
         assert!( !m.insert(3, 12000) );
+
+        let mut count = 0;
+        for (_,_) in m.iter() { count += 1; }
+        assert_eq!(count, 8);
+    }
+
+    #[test]
+    fn test_set_empty() {
+        let s : HashSet<uint> = HashSet::new();
+        assert_eq!(s.len(), 0);
+        assert!(!s.contains(&3));
+        let mut count = 0;
+        for _ in s.iter() { count += 1; }
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_set_nonempty() {
+        let mut s : HashSet<uint> = HashSet::new();
+        let v = [1,3,5,7,9,11,13,15];
+        for i in v.iter() {
+            assert!(s.insert(*i));
+        }
+        assert_eq!(s.len(), 8);
+        assert!(s.contains(&3));
+        let mut count = 0;
+        for _ in s.iter() { count += 1; }
+        assert_eq!(count, 8);
+        let empty : HashSet<uint> = HashSet::new();
+        assert!( s.is_disjoint(&empty) );
+        assert!( empty.is_subset(&s) );
+        assert!( s.is_superset(&empty) );
     }
 
     #[bench]
     fn hash_bench_siphash(b: &mut extra::test::BenchHarness) {
         let s = "abcdefghijklmnopqrstuvwxyz";
-        do b.iter { s.hash(); }
+        b.iter(|| { s.hash(); });
     }
 
     #[bench]
     fn hash_bench_djbhash(b: &mut extra::test::BenchHarness) {
         let s = "abcdefghijklmnopqrstuvwxyz";
-        do b.iter { DJBState::djbhash(&s); }
+        b.iter(|| { DJBState::djbhash(&s); });
     }
 }
