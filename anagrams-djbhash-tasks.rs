@@ -15,11 +15,11 @@ use std::hashmap::HashSet;
 
 pub fn split_words(s : &str) -> ~[~str] { s.words().map(|w| w.to_owned()).collect() }
 
-fn load_dictionary() -> ~HashMap<~[u8],~[~str]> {
+fn load_dictionary() -> HashMap<~[u8],~[~str]> {
     let path = Path::new("anadict.txt");
     let file = File::open(&path);
     let mut bufferedFile = BufferedReader::new(file);
-    let mut map = ~HashMap::new();
+    let mut map = HashMap::new();
     for line in bufferedFile.lines() {
         let words = split_words(line);
         let key : ~[char] = words[0].chars().collect();
@@ -35,7 +35,7 @@ fn get_letters(s : &str) -> ~[u8] {
     return vec::from_fn(t.len(), |i| t[i] as u8);
 }
 
-fn search(arc_dictionary : Arc<~HashMap<~[u8],~[~str]>>, request_port : &Port<~[~[u8]]>) -> ~HashSet<~str> {
+fn search(arc_dictionary : Arc<HashMap<~[u8],~[~str]>>, request_port : &Port<~[~[u8]]>) -> ~HashSet<~str> {
     let dictionary = arc_dictionary.get();
     let mut set = ~HashSet::new();
     loop {
