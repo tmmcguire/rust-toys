@@ -10,8 +10,7 @@ use std::io::buffered::BufferedReader;
 
 use extra::arc::Arc;
 
-use djbhash::HashMap;
-use std::hashmap::HashSet;
+use djbhash::{HashMap,HashSet};
 
 pub fn split_words(s : &str) -> ~[~str] { s.words().map(|w| w.to_owned()).collect() }
 
