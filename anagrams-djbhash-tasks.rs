@@ -7,22 +7,11 @@ extern mod djbhash;
 use std::{vec,iter,os,util};
 use std::io::File;
 use std::io::buffered::BufferedReader;
-// use extra::time;
 
 use extra::arc::Arc;
 
 use djbhash::HashMap;
 use std::hashmap::HashSet;
-
-// fn duration(tag : &str, start : time::Timespec, end : time::Timespec) {
-//     let d_sec = end.sec - start.sec;
-//     let d_nsec = end.nsec - start.nsec;
-//     if d_nsec >= 0 {
-//         println!("{:s}: {:?}", tag, time::Timespec { sec : d_sec, nsec : d_nsec });
-//     } else {
-//         println!("{:s}: {:?}", tag, time::Timespec { sec : d_sec - 1, nsec : d_nsec + 1000000000 });
-//     }
-// }
 
 pub fn split_words(s : &str) -> ~[~str] { s.words().map(|w| w.to_owned()).collect() }
 
