@@ -78,7 +78,7 @@ fn spawn_workers(n_workers : uint) -> (Port<~HashSet<~str>>,~[Chan<~[~[u8]]>]) {
 }
 
 static width : uint = 6;        // number of worker tasks
-static depth : uint = 10000;    // keys / request sent to worker task
+static depth : uint = 200000;   // keys / request sent to worker task
 
 fn main() {
     let args = os::args();

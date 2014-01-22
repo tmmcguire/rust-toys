@@ -47,18 +47,8 @@ fn search(keys         : &[~[u8]],
     return set;
 }
 
-fn main() {
-    let width = 6;              // number of worker tasks
-    let depth = 10000;          // keys / request sent to worker task
-
-    let args = os::args();
-    if args.len() < 2 {
-        fail!(~"Usage: anagrams letters");
-    }
-    let letters = get_letters(args[1]);
-
+fn spawn_workers(width : uint) -> (Port<~HashSet<~str>>, ~[Chan<~[~[u8]]>]) {
     let (response_port, response_chan) = SharedChan::new();
-
     let mut request_chans : ~[Chan<~[~[u8]]>] = ~[];
     for _ in range(0, width) {
         let (request_port,request_chan) = Chan::new();
@@ -70,6 +60,20 @@ fn main() {
             response_chan.send( search(keys, values, &request_port) );
         }
     }
+    (response_port, request_chans)
+}
+
+fn main() {
+    let width = 6;              // number of worker tasks
+    let depth = 500000;         // keys / request sent to worker task
+
+    let args = os::args();
+    if args.len() < 2 {
+        fail!(~"Usage: anagrams letters");
+    }
+    let letters = get_letters(args[1]);
+
+    let (response_port, request_chans) = spawn_workers(width);
 
     let mut t = 0;
     let mut key_set = ~[];
