@@ -4,7 +4,7 @@ extern mod combinations;
 extern mod bisect;
 extern mod djbhash;
 
-use std::{vec,iter,os,util};
+use std::{iter,os,util};
 use std::io::File;
 use std::io::buffered::BufferedReader;
 
@@ -16,28 +16,26 @@ use std::hashmap::HashSet;
 pub fn split_words(s : &str) -> ~[~str] { s.words().map(|w| w.to_owned()).collect() }
 
 fn load_dictionary() -> HashMap<~[u8],~[~str]> {
-    let path = Path::new("anadict.txt");
-    let file = File::open(&path);
-    let mut bufferedFile = BufferedReader::new(file);
-    let mut map = HashMap::new();
+    let mut bufferedFile = BufferedReader::new( File::open( &Path::new("anadict.txt") ) );
+    let mut map          = HashMap::new();
     for line in bufferedFile.lines() {
-        let words = split_words(line);
-        let key : ~[char] = words[0].chars().collect();
-        map.insert(vec::from_fn(key.len(), |i| key[i] as u8),
-                   vec::from_fn(words.len() - 1, |i| words[i+1].clone()));
+        let words   : ~[~str] = split_words(line);
+        let key     : ~[u8]   = words[0].chars().map( |ch| ch as u8 ).collect();
+        let entries : ~[~str] = words.iter().skip(1).map( |w| w.to_owned() ).collect();
+        map.insert(key, entries);
     }
     return map;
 }
 
 fn get_letters(s : &str) -> ~[u8] {
-    let mut t : ~[char] = s.chars().collect();
+    let mut t : ~[u8] = s.chars().map( |ch| ch as u8 ).collect();
     t.sort();
-    return vec::from_fn(t.len(), |i| t[i] as u8);
+    return t;
 }
 
 fn search(arc_dictionary : Arc<HashMap<~[u8],~[~str]>>, request_port : &Port<~[~[u8]]>) -> ~HashSet<~str> {
     let dictionary = arc_dictionary.get();
-    let mut set = ~HashSet::new();
+    let mut set    = ~HashSet::new();
     loop {
         let key_set = request_port.recv();
         if key_set.len() == 0 { break; }
@@ -54,15 +52,15 @@ fn search(arc_dictionary : Arc<HashMap<~[u8],~[~str]>>, request_port : &Port<~[~
 }
 
 fn spawn_workers(n_workers : uint) -> (Port<~HashSet<~str>>,~[Chan<~[~[u8]]>]) {
-    let shared_dictionary = Arc::new( load_dictionary() );
-    let (response_port, response_chan) = SharedChan::new();
+    let shared_dictionary                     = Arc::new( load_dictionary() );
+    let (response_port, response_chan)        = SharedChan::new();
     let mut request_chans : ~[Chan<~[~[u8]]>] = ~[];
     for _ in range(0, n_workers) {
-        let dictionary = shared_dictionary.clone();
+        let dictionary                  = shared_dictionary.clone();
+        let response_chan               = response_chan.clone();
         let (request_port,request_chan) = Chan::new();
         request_chans.push(request_chan);
         // Set up and start worker task
-        let response_chan = response_chan.clone();
         do spawn {
             response_chan.send( search(dictionary, &request_port) );
         }
@@ -84,7 +82,7 @@ fn main() {
 
     // Iterate through the combinations, collecting groups of them
     // (key_set) to be sent to individual workers.
-    let mut worker = 0;
+    let mut worker  = 0;
     let mut key_set = ~[];
     for i in iter::range(2,letters.len() + 1) {
         combinations::each_combination(letters, i, |combo| {
@@ -103,7 +101,7 @@ fn main() {
     for chan in request_chans.iter() { chan.send(~[]) };
 
     // Collect responses from workers.
-    let mut set : ~HashSet<~str> = ~HashSet::new();
+    let mut set : HashSet<~str> = HashSet::new();
     for _ in range(0, width) {
         let response_set = response_port.recv();
         for word in response_set.iter() { set.insert(word.clone()); }
