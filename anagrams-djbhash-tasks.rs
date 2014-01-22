@@ -1,4 +1,4 @@
-// extern mod extra;
+extern mod extra;
 
 extern mod combinations;
 extern mod bisect;
@@ -8,6 +8,8 @@ use std::{vec,iter,os,util};
 use std::io::File;
 use std::io::buffered::BufferedReader;
 // use extra::time;
+
+use extra::arc::Arc;
 
 use djbhash::HashMap;
 use std::hashmap::HashSet;
@@ -44,7 +46,8 @@ fn get_letters(s : &str) -> ~[u8] {
     return vec::from_fn(t.len(), |i| t[i] as u8);
 }
 
-fn search(dictionary : &HashMap<~[u8],~[~str]>, request_port : &Port<~[~[u8]]>) -> ~HashSet<~str> {
+fn search(arc_dictionary : Arc<~HashMap<~[u8],~[~str]>>, request_port : &Port<~[~[u8]]>) -> ~HashSet<~str> {
+    let dictionary = arc_dictionary.get();
     let mut set = ~HashSet::new();
     loop {
         let key_set = request_port.recv();
@@ -62,15 +65,16 @@ fn search(dictionary : &HashMap<~[u8],~[~str]>, request_port : &Port<~[~[u8]]>) 
 }
 
 fn spawn_workers(n_workers : uint) -> (Port<~HashSet<~str>>,~[Chan<~[~[u8]]>]) {
+    let shared_dictionary = Arc::new( load_dictionary() );
     let (response_port, response_chan) = SharedChan::new();
     let mut request_chans : ~[Chan<~[~[u8]]>] = ~[];
     for _ in range(0, n_workers) {
+        let dictionary = shared_dictionary.clone();
         let (request_port,request_chan) = Chan::new();
         request_chans.push(request_chan);
         // Set up and start worker task
         let response_chan = response_chan.clone();
         do spawn {
-            let dictionary = load_dictionary();
             response_chan.send( search(dictionary, &request_port) );
         }
     }
