@@ -22,6 +22,7 @@ struct DJBState {
 }
 
 impl DJBState {
+    #[inline]
     fn new() -> DJBState { DJBState { hash : 5381u64 } }
 
     #[inline]
@@ -32,6 +33,7 @@ impl DJBState {
         return state.hash();
     }
 
+    #[inline]
     fn hash(&self) -> u64 { self.hash }
 }
 
@@ -45,6 +47,8 @@ impl Writer for DJBState {
         // for i in range(0, buf.len()) { self.hash = (33u64 * self.hash) ^ buf[i] as u64 }  /* 3.6s */
         // for byte in buf.iter() { self.hash = (33u64 * self.hash) ^ *byte as u64 }         /* 3.8s */
     }
+
+    #[inline]
     fn flush(&mut self) { }
 }
 
@@ -80,7 +84,10 @@ enum Entry<K,V> {
 
 impl<K : Eq, V> Entry<K,V> {
     // fn is_empty(&self) -> bool { match *self { Empty => true, _ => false } }
+    #[inline]
     fn is_full(&self)  -> bool { match *self { Full(..) => true, _ => false } }
+
+    #[inline]
     fn is_ghost(&self) -> bool { match *self { Ghost(..) => true, _ => false } }
 
     #[inline]
@@ -101,8 +108,10 @@ pub struct HashMap<K,V> {
 }
 
 impl<K : Eq + IterBytes,V> HashMap<K,V> {
+    #[inline]
     pub fn new() -> HashMap<K,V> { HashMap::with_capacity(8) }
 
+    #[inline]
     pub fn with_capacity(sz : uint) -> HashMap<K,V> {
         let capacity = uint::next_power_of_two(sz);
         HashMap {
@@ -114,6 +123,7 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
         }
     }
 
+    #[inline]
     pub fn capacity(&self) -> uint { self.capacity }
 
     // This algorithm gleefully stolen from Python
@@ -175,10 +185,12 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
 }
 
 impl<K,V> Container for HashMap<K,V> {
+    #[inline]
     fn len(&self) -> uint { self.length }
 }
 
 impl<K,V> Mutable for HashMap<K,V> {
+    #[inline]
     fn clear(&mut self) { 
         for elt in self.table.mut_iter() { *elt = Empty; }
         self.length = 0;
@@ -187,6 +199,7 @@ impl<K,V> Mutable for HashMap<K,V> {
 }
 
 impl<K : Eq + IterBytes,V> Map<K,V> for HashMap<K,V> {
+    #[inline]
     fn find<'a>(&'a self, key: &K) -> Option<&'a V> {
         let i = self.probe(key);
         match self.table[i] {
@@ -198,6 +211,7 @@ impl<K : Eq + IterBytes,V> Map<K,V> for HashMap<K,V> {
 
 impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
 
+    #[inline]
     fn swap(&mut self, key: K, value: V) -> Option<V> {
         self.expand();
         let i = self.probe(&key);
@@ -219,6 +233,7 @@ impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
         }
     }
 
+    #[inline]
     fn pop(&mut self, key: &K) -> Option<V> {
         self.expand();
         let i = self.probe(key);
@@ -235,6 +250,7 @@ impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
         result
     }
 
+    #[inline]
     fn find_mut<'a>(&'a mut self, key: &K) -> Option<&'a mut V> {
         let i = self.probe(key);
         match self.table[i] {
@@ -250,6 +266,7 @@ pub struct HashMapIterator<'a,K,V> {
 }
 
 impl<'a,K,V> Iterator<(&'a K, &'a V)> for HashMapIterator<'a,K,V> {
+    #[inline]
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
         for elt in self.iterator {
             match *elt {
@@ -269,24 +286,30 @@ pub struct HashSet<T> {
 }
 
 impl<T : Eq + IterBytes> HashSet<T> {
+    #[inline]
     pub fn new() -> HashSet<T> { HashSet { map : HashMap::new() } }
 
+    #[inline]
     pub fn iter<'a>(&'a self) -> HashSetIterator<'a, T> {
         HashSetIterator { iterator: self.map.iter() }
     }
 }    
 
 impl<T> Container for HashSet<T> {
+    #[inline]
     fn len(&self) -> uint { self.map.len() }
 }
 
 impl<T> Mutable for HashSet<T> {
+    #[inline]
     fn clear(&mut self) { self.map.clear() }
 }
 
 impl<T : Eq + IterBytes> Set<T> for HashSet<T> {
+    #[inline]
     fn contains(&self, elt : &T) -> bool { self.map.contains_key(elt) }
 
+    #[inline]
     fn is_disjoint(&self, other : &HashSet<T>) -> bool {
         for elt in self.map.table.iter() {
             match *elt {
@@ -299,6 +322,7 @@ impl<T : Eq + IterBytes> Set<T> for HashSet<T> {
         return true;
     }
 
+    #[inline]
     fn is_subset(&self, other : &HashSet<T>) -> bool {
         for elt in self.map.table.iter() {
             match *elt {
@@ -311,16 +335,19 @@ impl<T : Eq + IterBytes> Set<T> for HashSet<T> {
         return true;
     }
 
+    #[inline]
     fn is_superset(&self, other : &HashSet<T>) -> bool {
         other.is_subset(self)
     }
 }
 
 impl<T : Eq + IterBytes> MutableSet<T> for HashSet<T> {
+    #[inline]
     fn insert(&mut self, value: T) -> bool {
         self.map.insert(value,())
     }
 
+    #[inline]
     fn remove(&mut self, value: &T) -> bool {
         self.map.remove(value)
     }
@@ -331,6 +358,7 @@ pub struct HashSetIterator<'a,T> {
 }
 
 impl<'a,T> Iterator<&'a T> for HashSetIterator<'a,T> {
+    #[inline]
     fn next(&mut self) -> Option<&'a T> {
         for (k,_) in self.iterator {
             return Some(k);
