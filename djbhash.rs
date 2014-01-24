@@ -78,11 +78,11 @@ static PERTURB_SHIFT : uint = 5;
 
 enum Entry<K,V> {
     Empty,                      // This slot is empty
-    Full(K,V),                  // This slot is holding a key and value
-    Ghost(K),                   // This slot once held key k
+    Full(K,V,u64),              // This slot is holding a key and value
+    Ghost(K,u64),               // This slot once held key k
 }
 
-impl<K : Eq, V> Entry<K,V> {
+impl<K, V> Entry<K,V> {
     // fn is_empty(&self) -> bool { match *self { Empty => true, _ => false } }
     #[inline]
     fn is_full(&self)  -> bool { match *self { Full(..) => true, _ => false } }
@@ -91,10 +91,20 @@ impl<K : Eq, V> Entry<K,V> {
     fn is_ghost(&self) -> bool { match *self { Ghost(..) => true, _ => false } }
 
     #[inline]
-    fn matches(&self, key : &K) -> bool {
+    fn matches_equiv<Q : Equiv<K>>(&self, key : &Q, hash : u64) -> bool {
         match *self {
-            Empty                        => true,
-            Full(ref k,_) | Ghost(ref k) => k == key,
+            Empty                               => true,
+            Full(ref k, _, h) | Ghost(ref k, h) => hash == h && key.equiv(k),
+        }
+    }
+}
+
+impl <K : Eq, V> Entry<K,V> {
+    #[inline]
+    fn matches(&self, key : &K, hash : u64) -> bool {
+        match *self {
+            Empty                               => true,
+            Full(ref k, _, h) | Ghost(ref k, h) => hash == h && k == key,
         }
     }
 }
@@ -126,16 +136,15 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
     #[inline]
     pub fn capacity(&self) -> uint { self.capacity }
 
-    // This algorithm gleefully stolen from Python
     #[inline]
-    fn probe(&self, key : &K) -> uint {
-        let mut hash = DJBState::djbhash(key);
-        let mut free = None;
-        let mut i = hash & self.mask;
-        while !self.table[i].matches(key) {
+    fn probe_equiv<Q:IterBytes + Equiv<K>>(&self, key : &Q, hash : u64) -> uint {
+        let mut shifted_hash = hash;
+        let mut free         = None;
+        let mut i            = shifted_hash & self.mask;
+        while !self.table[i].matches_equiv(key,hash) {
             if free.is_none() && self.table[i].is_ghost() { free = Some(i); }
-            i = ((5 * i) + 1 + hash) & self.mask;
-            hash = hash >> PERTURB_SHIFT;
+            i = ((5 * i) + 1 + shifted_hash) & self.mask;
+            shifted_hash = shifted_hash >> PERTURB_SHIFT;
         }
         if self.table[i].is_full() || free.is_none() {
             i as uint
@@ -149,22 +158,22 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
         let mut new_tbl = HashMap::with_capacity( new_capacity );
         for elt in self.table.mut_iter() {
             match util::replace(elt, Empty) {
-                Full(k,v)        => { new_tbl.insert(k,v); },
-                Empty | Ghost(_) => { },
+                Full(k,v,_)        => { new_tbl.insert(k,v); },
+                Empty | Ghost(..)  => { },
             }
         }
         // Copy new table's elements into self.  Note: attempting
         // to do this more directly causes: "use of partially moved
         // value"
-        let cap = new_tbl.capacity;
-        let mask = new_tbl.mask;
-        let len = new_tbl.length;
+        let cap    = new_tbl.capacity;
+        let mask   = new_tbl.mask;
+        let len    = new_tbl.length;
         let ghosts = new_tbl.ghosts;
-        self.table = new_tbl.table;
+        self.table    = new_tbl.table;
         self.capacity = cap;
-        self.mask = mask;
-        self.length = len;
-        self.ghosts = ghosts;
+        self.mask     = mask;
+        self.length   = len;
+        self.ghosts   = ghosts;
     }
 
     #[inline]
@@ -178,9 +187,37 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
         }
     }
 
+    pub fn find_equiv<'a, Q:IterBytes + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
+        let i = self.probe_equiv(k, DJBState::djbhash(k));
+        match self.table[i] {
+            Empty | Ghost(..)   => None,
+            Full(_, ref val, _) => Some(val),
+        }
+    }
+
     #[inline]
     pub fn iter<'a>(&'a self) -> HashMapIterator<'a, K, V> {
         HashMapIterator { iterator : self.table.iter() }
+    }
+}
+
+impl<K : Eq + IterBytes,V> HashMap<K,V> {
+    // This algorithm gleefully stolen from Python
+    #[inline]
+    fn probe(&self, key : &K, hash : u64) -> uint {
+        let mut shifted_hash = hash;
+        let mut free         = None;
+        let mut i            = shifted_hash & self.mask;
+        while !self.table[i].matches(key,hash) {
+            if free.is_none() && self.table[i].is_ghost() { free = Some(i); }
+            i = ((5 * i) + 1 + shifted_hash) & self.mask;
+            shifted_hash = shifted_hash >> PERTURB_SHIFT;
+        }
+        if self.table[i].is_full() || free.is_none() {
+            i as uint
+        } else {
+            free.unwrap() as uint
+        }
     }
 }
 
@@ -201,10 +238,10 @@ impl<K,V> Mutable for HashMap<K,V> {
 impl<K : Eq + IterBytes,V> Map<K,V> for HashMap<K,V> {
     #[inline]
     fn find<'a>(&'a self, key: &K) -> Option<&'a V> {
-        let i = self.probe(key);
+        let i = self.probe(key, DJBState::djbhash(key));
         match self.table[i] {
-            Empty | Ghost(_) => None,
-            Full(_, ref val) => Some(val),
+            Empty | Ghost(..)   => None,
+            Full(_, ref val, _) => Some(val),
         }
     }
 }
@@ -214,20 +251,21 @@ impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
     #[inline]
     fn swap(&mut self, key: K, value: V) -> Option<V> {
         self.expand();
-        let i = self.probe(&key);
+        let hash = DJBState::djbhash(&key);
+        let i = self.probe(&key, hash);
         match self.table[i] {
             Empty => {
-                self.table[i] = Full(key,value);
+                self.table[i] = Full(key,value, hash);
                 self.length += 1;
                 None
             },
-            Ghost(_) => {
-                self.table[i] = Full(key,value);
+            Ghost(..) => {
+                self.table[i] = Full(key,value, hash);
                 self.length += 1;
                 self.ghosts -= 1;
                 None
             },
-            Full(_,ref mut v) => {
+            Full(_,ref mut v,_) => {
                 Some( util::replace(v, value) )
             },
         }
@@ -236,14 +274,14 @@ impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
     #[inline]
     fn pop(&mut self, key: &K) -> Option<V> {
         self.expand();
-        let i = self.probe(key);
+        let i = self.probe(key, DJBState::djbhash(key));
         let (result,replacement) = match util::replace(&mut self.table[i], Empty) {
-            Empty     => (None,Empty),
-            Ghost(k)  => (None,Ghost(k)),
-            Full(k,v) => {
+            Empty       => (None,Empty),
+            Ghost(k,h)  => (None,Ghost(k,h)),
+            Full(k,v,h) => {
                 self.length -= 1;
                 self.ghosts += 1;
-                (Some(v),Ghost(k))
+                (Some(v),Ghost(k,h))
             },
         };
         self.table[i] = replacement;
@@ -252,10 +290,10 @@ impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
 
     #[inline]
     fn find_mut<'a>(&'a mut self, key: &K) -> Option<&'a mut V> {
-        let i = self.probe(key);
+        let i = self.probe(key, DJBState::djbhash(key));
         match self.table[i] {
-            Empty | Ghost(_)  => None,
-            Full(_,ref mut val) => Some(val),
+            Empty | Ghost(..)     => None,
+            Full(_,ref mut val,_) => Some(val),
         }
     }
 }
@@ -270,8 +308,8 @@ impl<'a,K,V> Iterator<(&'a K, &'a V)> for HashMapIterator<'a,K,V> {
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
         for elt in self.iterator {
             match *elt {
-                Empty | Ghost(_)       => { },
-                Full(ref key, ref val) => { return Some((key, val)) },
+                Empty | Ghost(..)        => { },
+                Full(ref key, ref val,_) => { return Some((key, val)) },
             }
         }
         return None;
@@ -313,7 +351,7 @@ impl<T : Eq + IterBytes> Set<T> for HashSet<T> {
     fn is_disjoint(&self, other : &HashSet<T>) -> bool {
         for elt in self.map.table.iter() {
             match *elt {
-                Full(ref k,_) => {
+                Full(ref k,_,_) => {
                     if other.contains(k) { return false; }
                 },
                 _ => { },
@@ -326,7 +364,7 @@ impl<T : Eq + IterBytes> Set<T> for HashSet<T> {
     fn is_subset(&self, other : &HashSet<T>) -> bool {
         for elt in self.map.table.iter() {
             match *elt {
-                Full(ref k,_) => {
+                Full(ref k,_,_) => {
                     if !other.contains(k) { return false; }
                 },
                 _ => { },
