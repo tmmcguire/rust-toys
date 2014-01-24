@@ -1,10 +1,11 @@
-extern mod extra;
+extern mod djbhash;
 
 extern mod combinations;
 extern mod mmap;
 
 use std::{os,vec};
-use std::hashmap::{HashMap,HashSet};
+
+use djbhash::{HashMap,HashSet};
 
 fn get_letters(s : &str) -> ~[u8] {
     let mut t : ~[char] = s.chars().collect();
