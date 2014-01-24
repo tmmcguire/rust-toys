@@ -46,10 +46,8 @@ fn search(letters : &[i8], dictionary : &HashMap<~[i8],~[~str]>) -> ~HashSet<~st
     let mut set = ~HashSet::new();
     for i in iter::range(0, letters.len() + 1) {
         // let start = time::get_time();
-        let mut key : ~[i8] = vec::from_elem(i, 0i8);
         combinations::each_combination(letters, i, |combo| {
-            for j in iter::range(0, combo.len()) { key[j] = combo[j]; }
-            match dictionary.find(&key) {
+            match dictionary.find_equiv(&combo) {
                 Some(ref val) => {
                     for word in val.iter() { set.insert(word.clone()); }
                 }
