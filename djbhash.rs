@@ -136,6 +136,24 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
     #[inline]
     pub fn capacity(&self) -> uint { self.capacity }
 
+    // This algorithm gleefully stolen from Python
+    #[inline]
+    fn probe(&self, key : &K, hash : u64) -> uint {
+        let mut shifted_hash = hash;
+        let mut free         = None;
+        let mut i            = shifted_hash & self.mask;
+        while !self.table[i].matches(key,hash) {
+            if free.is_none() && self.table[i].is_ghost() { free = Some(i); }
+            i = ((5 * i) + 1 + shifted_hash) & self.mask;
+            shifted_hash = shifted_hash >> PERTURB_SHIFT;
+        }
+        if self.table[i].is_full() || free.is_none() {
+            i as uint
+        } else {
+            free.unwrap() as uint
+        }
+    }
+
     #[inline]
     fn probe_equiv<Q:IterBytes + Equiv<K>>(&self, key : &Q, hash : u64) -> uint {
         let mut shifted_hash = hash;
@@ -153,12 +171,34 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
         }
     }
 
+    // Precondition: this is used by expand, so there must be enough space in the table.
+    #[inline]
+    fn swap_with_hash(&mut self, key: K, hash : u64, value: V) -> Option<V> {
+        let i = self.probe(&key, hash);
+        match self.table[i] {
+            Empty => {
+                self.table[i] = Full(key,value,hash);
+                self.length += 1;
+                None
+            },
+            Ghost(..) => {
+                self.table[i] = Full(key,value,hash);
+                self.length += 1;
+                self.ghosts -= 1;
+                None
+            },
+            Full(_,ref mut v, _) => {
+                Some( util::replace(v, value) )
+            },
+        }
+    }
+
     #[inline]
     fn do_expand(&mut self, new_capacity : uint) {
         let mut new_tbl = HashMap::with_capacity( new_capacity );
         for elt in self.table.mut_iter() {
             match util::replace(elt, Empty) {
-                Full(k,v,_)        => { new_tbl.insert(k,v); },
+                Full(k,v,h)        => { new_tbl.swap_with_hash(k,h,v); },
                 Empty | Ghost(..)  => { },
             }
         }
@@ -187,6 +227,7 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
         }
     }
 
+    #[inline]
     pub fn find_equiv<'a, Q:IterBytes + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
         let i = self.probe_equiv(k, DJBState::djbhash(k));
         match self.table[i] {
@@ -198,26 +239,6 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
     #[inline]
     pub fn iter<'a>(&'a self) -> HashMapIterator<'a, K, V> {
         HashMapIterator { iterator : self.table.iter() }
-    }
-}
-
-impl<K : Eq + IterBytes,V> HashMap<K,V> {
-    // This algorithm gleefully stolen from Python
-    #[inline]
-    fn probe(&self, key : &K, hash : u64) -> uint {
-        let mut shifted_hash = hash;
-        let mut free         = None;
-        let mut i            = shifted_hash & self.mask;
-        while !self.table[i].matches(key,hash) {
-            if free.is_none() && self.table[i].is_ghost() { free = Some(i); }
-            i = ((5 * i) + 1 + shifted_hash) & self.mask;
-            shifted_hash = shifted_hash >> PERTURB_SHIFT;
-        }
-        if self.table[i].is_full() || free.is_none() {
-            i as uint
-        } else {
-            free.unwrap() as uint
-        }
     }
 }
 
@@ -252,23 +273,7 @@ impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
     fn swap(&mut self, key: K, value: V) -> Option<V> {
         self.expand();
         let hash = DJBState::djbhash(&key);
-        let i = self.probe(&key, hash);
-        match self.table[i] {
-            Empty => {
-                self.table[i] = Full(key,value, hash);
-                self.length += 1;
-                None
-            },
-            Ghost(..) => {
-                self.table[i] = Full(key,value, hash);
-                self.length += 1;
-                self.ghosts -= 1;
-                None
-            },
-            Full(_,ref mut v,_) => {
-                Some( util::replace(v, value) )
-            },
-        }
+        self.swap_with_hash(key, hash, value)
     }
 
     #[inline]
@@ -467,7 +472,7 @@ mod tests {
         assert_eq!(m.len(),8);
         assert_eq!(m.capacity(),16);
         assert!( !m.insert(3, 12000) );
-
+ 
         let mut count = 0;
         for (_,_) in m.iter() { count += 1; }
         assert_eq!(count, 8);
