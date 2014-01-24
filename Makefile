@@ -4,14 +4,16 @@ CC     = gcc -O3
 
 LIBS   = bisect.rs combinations.rs mmap.rs djbhash.rs
 
-PROGS  = anagrams-hashmap-wide anagrams-hashmap \
+RUST_P = anagrams-hashmap-wide anagrams-hashmap \
 	 anagrams-vectors-tasks anagrams-vectors-wide \
          anagrams-vectors anagrams-hashmap-mmap \
 	 anagrams-djbhashmap anagrams-djbhash-tasks \
          mk_anadict mk_anadict_traits \
+         complex hashing-performance
+
+PROGS  = $(RUST_P) \
          $(ALT)/anagrams-hash $(ALT)/anagrams-vectors \
          $(ALT)/mk_anadict $(ALT)/nimrod_anagrams \
-         complex hashing-performance
 
 PYTHON = $(ALT)/mk_anadict.py $(ALT)/presser_one.py $(ALT)/presser_two.py $(ALT)/presser_three.py
 
@@ -23,6 +25,8 @@ libs : $(LIBS)
 	rustc -L. -O --lib mmap.rs
 	rustc -L. -O --lib djbhash.rs
 	touch libs
+
+$(RUST_P) : libs
 
 results : libs $(PROGS) $(PYTHON)
 	echo > results
