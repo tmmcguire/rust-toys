@@ -1,16 +1,19 @@
-use std::str;
-use std::io::{File,Truncate,Write};
-use std::io::buffered::BufferedReader;
-use std::hashmap::HashMap;
+// mk_anadict_traits.rs
+//
+// Updated to Rust 0.11.0
+
+use std::io::{BufferedReader,File,IoResult,Truncate,Write};
+use std::collections::hashmap::HashMap;
+use std::hash::Hash;
 
 trait SortedKeys<K : Ord> {
-    fn sorted_keys(&self) -> ~[K];
+    fn sorted_keys(&self) -> Vec<K>;
 }
 
-impl<K : Hash + IterBytes + Eq + Ord + Clone + TotalOrd, V> SortedKeys<K> for HashMap<K,V> {
+impl<K : Hash + Eq + Ord + Clone, V> SortedKeys<K> for HashMap<K,V> {
 
-    fn sorted_keys(&self) -> ~[K] {
-        let mut keys : ~[K] = self.iter().map(|(k,_)| k.clone()).collect();
+    fn sorted_keys(&self) -> Vec<K> {
+        let mut keys : Vec<K> = self.iter().map(|(k,_)| k.clone()).collect();
         keys.sort();
         keys
     }
@@ -18,54 +21,57 @@ impl<K : Hash + IterBytes + Eq + Ord + Clone + TotalOrd, V> SortedKeys<K> for Ha
 }
 
 trait DictReader<T> {
-    fn read_dict(&mut self) -> ~HashMap<~str,~[~str]>;
+    fn read_dict(&mut self) -> HashMap<String,Vec<String>>;
 }
 
 impl<T:Reader> DictReader<T> for BufferedReader<T> {
 
-    fn read_dict(&mut self) -> ~HashMap<~str,~[~str]> {
-        let mut map = ~HashMap::new();
+    fn read_dict(&mut self) -> HashMap<String,Vec<String>> {
+        let mut map = HashMap::new();
         for line in self.lines() {
-            let line = line.trim();
+            let line = line.unwrap();
+            let line = line.as_slice().trim();
             let length = line.len();
             // Original is using pre-strip() line for comparisons
             if length >= 2 && length < 19
                 && line.chars().all( |ch| (ch.is_ascii() && ch.is_lowercase()) ) {
-                let mut chars : ~[char] = line.chars().collect();
-                chars.sort();
-                let key = str::from_chars(chars);
-                map.find_or_insert(key, ~[]).push( line.to_owned() )
-            }
+                    let mut chars : Vec<char> = line.chars().collect();
+                    chars.sort();
+                    let key = std::str::from_chars(chars.as_slice());
+                    map.find_or_insert(key, Vec::new()).push( line.to_string() )
+                }
         }
-        return map;
+        map
     }
 
 }
 
 trait DictWriter : Writer {
 
-    fn write_dict(&mut self, dict : &HashMap<~str,~[~str]>) {
+    fn write_dict(&mut self, dict : &HashMap<String,Vec<String>>) {
         let keys = dict.sorted_keys(); // needed for lifetime
         for key in keys.iter() {
-            let line : ~str = dict.get(key).connect(" ");
-            self.write_line( format!("{:s} {:s}", *key, line) );
+            let line : String = dict.get(key).connect(" ");
+            match write!( self, "{:s} {:s}", *key, line ) {
+                Ok(_)  => { }
+                Err(e) => { fail!(e) }
+            }
         }
     }
 
 }
 
 impl DictWriter for File { }
-impl<W:Writer> DictWriter for Option<W> { }
+impl DictWriter for IoResult<File> { }
 
 fn main() {
     let words_path = Path::new("/usr/share/dict/words");
     let words_file = File::open(&words_path);
-    let mut words = BufferedReader::new(words_file);
-
+    let mut words  = BufferedReader::new(words_file);
     let dictionary = words.read_dict();
 
-    let dict_path = Path::new("anadict.txt");
+    let dict_path     = Path::new("anadict.txt");
     let mut dict_file = File::open_mode(&dict_path, Truncate, Write);
 
-    dict_file.write_dict( dictionary );
+    dict_file.write_dict( &dictionary );
 }
