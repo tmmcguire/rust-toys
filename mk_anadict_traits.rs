@@ -52,7 +52,7 @@ trait DictWriter : Writer {
         let keys = dict.sorted_keys(); // needed for lifetime
         for key in keys.iter() {
             let line : String = dict.get(key).connect(" ");
-            match write!( self, "{:s} {:s}", *key, line ) {
+            match write!( self, "{:s} {:s}\n", *key, line ) {
                 Ok(_)  => { }
                 Err(e) => { fail!(e) }
             }
