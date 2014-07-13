@@ -10,17 +10,22 @@ use std::collections::hashmap::{HashMap, HashSet};
 //     let d_sec = end.sec - start.sec;
 //     let d_nsec = end.nsec - start.nsec;
 //     if d_nsec >= 0 {
-//         println!("{:s}: {:?}", tag, time::Timespec { sec : d_sec, nsec : d_nsec });
+//         println!("{:s}: {:?}", tag, time::Timespec {
+//             sec : d_sec,
+//             nsec : d_nsec
+//         });
 //     } else {
-//         println!("{:s}: {:?}", tag, time::Timespec { sec : d_sec - 1, nsec : d_nsec + 1000000000 });
+//         println!("{:s}: {:?}", tag, time::Timespec {
+//             sec : d_sec - 1,
+//             nsec : d_nsec + 1000000000
+//         });
 //     }
 // }
 
 pub fn split_words(s : &str) -> Vec<String> { s.words().map(|w| w.to_string()).collect() }
 
 fn load_dictionary() -> HashMap<Vec<i8>,Vec<String>> {
-    let path = Path::new("anadict.txt");
-    let file = File::open(&path);
+    let file = File::open( &Path::new("anadict.txt") );
     let mut bufferedFile = BufferedReader::new(file);
     let mut map = HashMap::new();
     for line in bufferedFile.lines() {
@@ -46,10 +51,9 @@ fn search(letters : &[i8], dictionary : &HashMap<Vec<i8>,Vec<String>>) -> HashSe
         // let start = time::get_time();
         let mut key : Vec<i8> = Vec::from_elem(i, 0i8);
         combinations::each_combination(letters, i, |combo| {
-            let combo : &[i8] = combo;
             for j in iter::range(0, combo.len()) { *key.get_mut(j) = combo[j]; }
             match dictionary.find(&key) {
-                Some(ref val) => {
+                Some(val) => {
                     for word in val.iter() { set.insert(word.clone()); }
                 }
                 None => { }
