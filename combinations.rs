@@ -38,12 +38,12 @@ pub fn each_combination<T:Clone>(values : &[T], r : uint, fun : |combo:&[T]| -> 
         fun(combination.as_slice());
         // Increment the indices
         let mut i = r - 1;
-        *indices.get_mut(i) = indices.get(i) + 1;
+        *indices.get_mut(i) += 1;
         while i > 0 && *indices.get(i) > max_indices0 + i {
             // indices[i] now too large; decrement i, increment indices[i]
             // and we'll fix up the following indices later
             i -= 1;
-            *indices.get_mut(i) = indices.get(i) + 1;
+            *indices.get_mut(i) += 1;
         }
         // Can't fix up 'done'
         if *indices.get(0) > max_indices0 { break; }
@@ -75,7 +75,9 @@ pub fn each_combination<T:Clone>(values : &[T], r : uint, fun : |combo:&[T]| -> 
  ///
  /// * `fun` - The function to iterate over the combinations
  #[inline]
- pub fn each_combination_ref<'v,T>(values : &'v [T], r : uint, fun : |combo:&[&'v T]| -> ()) {
+ pub fn each_combination_ref<'v,T>(values : &'v [T],
+                                   r      : uint,
+                                   fun    : |combo:&[&'v T]| -> ()) {
      let v = Vec::from_fn(values.len(), |i| &values[i]);
      each_combination(v.as_slice(), r, fun);
  }
