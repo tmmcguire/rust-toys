@@ -1,7 +1,5 @@
-#[ crate_id = "bisect#1.0" ];
-#[ crate_type = "lib" ];
-
-extern mod std;
+#![ crate_id = "bisect#1.0" ]
+#![ crate_type = "lib" ]
 
 /// Locate the insertion point for `x` in `a` to maintain sorted order.
 ///

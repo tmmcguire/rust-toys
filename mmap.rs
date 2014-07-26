@@ -1,10 +1,12 @@
-#[ crate_id ="mmap#1.0" ];
-#[ crate_type = "lib" ];
+#![ crate_id ="mmap#1.0" ]
+#![ crate_type = "lib" ]
 
-use std::{libc,os,vec};
+extern crate libc;
+
+use std::{os,slice};
 
 pub mod raw {
-    use std::libc;
+    extern crate libc;
 
     extern {
         pub fn mmap(addr : *libc::c_char, length : libc::size_t, 
@@ -105,6 +107,6 @@ pub fn with_mmap_file_contents<U>(filename : &str, f : |v:&[u8]| -> U) -> U {
         let fd = open(filename);
         let st = fstat(&fd);
         let buf = mmap(&fd, st.st_size as libc::size_t);
-        return vec::raw::buf_as_slice(buf.reg, buf.siz as uint, f);
+        return slice::raw::buf_as_slice(buf.reg, buf.siz as uint, f);
     }
 }
