@@ -6,14 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[ crate_id = "djbhash#1.0" ];
-#[ crate_type = "lib" ];
+#![ crate_id = "djbhash#1.0" ]
+#![ crate_type = "lib" ]
 
 use std::io::Writer;
-use std::to_bytes::IterBytes;
-use std::vec;
-use std::uint;
-use std::util;
 
 // Simple Writer/IterBytes based implementation of the DJB hash
 // (See http://cr.yp.to/cdb/cdb.txt and http://www.cse.yorku.ca/~oz/hash.html)
@@ -21,15 +17,19 @@ struct DJBState {
     hash : u64
 }
 
+trait AsBytes {
+    fn as_byte_vec<'a>(&'a self) -> &'a [u8];
+}
+
 impl DJBState {
     #[inline]
     fn new() -> DJBState { DJBState { hash : 5381u64 } }
 
     #[inline]
-    fn djbhash<T:IterBytes>(t : &T) -> u64 {
+    fn djbhash<T:AsBytes>(t : &T) -> u64 {
         let mut state = DJBState::new();
-        t.iter_bytes(true, |b| { state.write(b); true });
-        state.flush();
+        state.write( t.as_byte_vec() ).unwrap();
+        state.flush().unwrap();
         return state.hash();
     }
 
@@ -39,17 +39,18 @@ impl DJBState {
 
 impl Writer for DJBState {
     #[inline]
-    fn write(&mut self, buf : &[u8]) {
+    fn write(&mut self, buf : &[u8]) -> std::io::IoResult<()> {
         let len = buf.len();
         let mut i = 0;
         while i < len { self.hash = (33u64 * self.hash) ^ buf[i] as u64; i += 1; }           /* 3.1s */
         // for i in range(0, len) { self.hash = (33u64 * self.hash) ^ buf[i] as u64 }        /* 3.6s */
         // for i in range(0, buf.len()) { self.hash = (33u64 * self.hash) ^ buf[i] as u64 }  /* 3.6s */
         // for byte in buf.iter() { self.hash = (33u64 * self.hash) ^ *byte as u64 }         /* 3.8s */
+        Ok(())
     }
 
     #[inline]
-    fn flush(&mut self) { }
+    fn flush(&mut self) -> std::io::IoResult<()> { Ok(()) }
 }
 
 /* Original hash function */
@@ -83,7 +84,9 @@ enum Entry<K,V> {
 }
 
 impl<K, V> Entry<K,V> {
+    // #[inline]
     // fn is_empty(&self) -> bool { match *self { Empty => true, _ => false } }
+
     #[inline]
     fn is_full(&self)  -> bool { match *self { Full(..) => true, _ => false } }
 
@@ -110,22 +113,22 @@ impl <K : Eq, V> Entry<K,V> {
 }
 
 pub struct HashMap<K,V> {
-    table      : ~[Entry<K,V>],
+    table      : Vec<Entry<K,V>>,
     capacity   : uint,
     mask       : u64,
     length     : uint,
     ghosts     : uint,
 }
 
-impl<K : Eq + IterBytes,V> HashMap<K,V> {
+impl<K : Eq,V> HashMap<K,V> {
     #[inline]
     pub fn new() -> HashMap<K,V> { HashMap::with_capacity(8) }
 
     #[inline]
     pub fn with_capacity(sz : uint) -> HashMap<K,V> {
-        let capacity = uint::next_power_of_two(sz);
+        let capacity = std::num::next_power_of_two(sz);
         HashMap {
-            table : vec::from_fn(capacity, |_| Empty),
+            table : Vec::from_fn(capacity, |_| Empty),
             capacity : capacity,
             mask : (capacity as u64) - 1,
             length : 0,
@@ -142,12 +145,12 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
         let mut shifted_hash = hash;
         let mut free         = None;
         let mut i            = shifted_hash & self.mask;
-        while !self.table[i].matches(key,hash) {
-            if free.is_none() && self.table[i].is_ghost() { free = Some(i); }
+        while !self.table.get(i as uint).matches(key,hash) {
+            if free.is_none() && self.table.get(i as uint).is_ghost() { free = Some(i); }
             i = ((5 * i) + 1 + shifted_hash) & self.mask;
             shifted_hash = shifted_hash >> PERTURB_SHIFT;
         }
-        if self.table[i].is_full() || free.is_none() {
+        if self.table.get(i as uint).is_full() || free.is_none() {
             i as uint
         } else {
             free.unwrap() as uint
@@ -155,16 +158,16 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
     }
 
     #[inline]
-    fn probe_equiv<Q:IterBytes + Equiv<K>>(&self, key : &Q, hash : u64) -> uint {
+    fn probe_equiv<Q:Equiv<K>>(&self, key : &Q, hash : u64) -> uint {
         let mut shifted_hash = hash;
         let mut free         = None;
         let mut i            = shifted_hash & self.mask;
-        while !self.table[i].matches_equiv(key,hash) {
-            if free.is_none() && self.table[i].is_ghost() { free = Some(i); }
+        while !self.table.get(i as uint).matches_equiv(key,hash) {
+            if free.is_none() && self.table.get(i as uint).is_ghost() { free = Some(i); }
             i = ((5 * i) + 1 + shifted_hash) & self.mask;
             shifted_hash = shifted_hash >> PERTURB_SHIFT;
         }
-        if self.table[i].is_full() || free.is_none() {
+        if self.table.get(i as uint).is_full() || free.is_none() {
             i as uint
         } else {
             free.unwrap() as uint
@@ -175,20 +178,23 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
     #[inline]
     fn swap_with_hash(&mut self, key: K, hash : u64, value: V) -> Option<V> {
         let i = self.probe(&key, hash);
-        match self.table[i] {
-            Empty => {
-                self.table[i] = Full(key,value,hash);
+        let elt = self.table.get_mut(i as uint);
+        match elt {
+            &Empty => {
+                let f = Full(key,value,hash);
+                std::mem::replace(elt, f);
                 self.length += 1;
                 None
             },
-            Ghost(..) => {
-                self.table[i] = Full(key,value,hash);
+            &Ghost(..) => {
+                let f = Full(key,value,hash);
+                std::mem::replace(elt, f);
                 self.length += 1;
                 self.ghosts -= 1;
                 None
             },
-            Full(_,ref mut v, _) => {
-                Some( util::replace(v, value) )
+            &Full(_,ref mut v, _) => {
+                Some( std::mem::replace(v, value) )
             },
         }
     }
@@ -197,7 +203,7 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
     fn do_expand(&mut self, new_capacity : uint) {
         let mut new_tbl = HashMap::with_capacity( new_capacity );
         for elt in self.table.mut_iter() {
-            match util::replace(elt, Empty) {
+            match std::mem::replace(elt, Empty) {
                 Full(k,v,h)        => { new_tbl.swap_with_hash(k,h,v); },
                 Empty | Ghost(..)  => { },
             }
@@ -218,21 +224,22 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
 
     #[inline]
     fn expand(&mut self) {
-        if self.length * 3 > self.capacity * 2 {
+        let capacity = self.capacity;
+        if self.length * 3 > capacity * 2 {
             // Expand table if live entries nearing capacity
-            self.do_expand( self.capacity * 2 );
-        } else if (self.length + self.ghosts) * 3 >= self.capacity * 2 {
+            self.do_expand( capacity * 2 );
+        } else if (self.length + self.ghosts) * 3 >= capacity * 2 {
             // Rehash to flush out excess ghosts
-            self.do_expand( self.capacity );
+            self.do_expand( capacity );
         }
     }
 
     #[inline]
-    pub fn find_equiv<'a, Q:IterBytes + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
+    pub fn find_equiv<'a, Q:Equiv<K> + AsBytes>(&'a self, k: &Q) -> Option<&'a V> {
         let i = self.probe_equiv(k, DJBState::djbhash(k));
-        match self.table[i] {
-            Empty | Ghost(..)   => None,
-            Full(_, ref val, _) => Some(val),
+        match self.table.get(i) {
+            &Empty | &Ghost(..)  => None,
+            &Full(_, ref val, _) => Some(val),
         }
     }
 
@@ -242,7 +249,7 @@ impl<K : Eq + IterBytes,V> HashMap<K,V> {
     }
 }
 
-impl<K,V> Container for HashMap<K,V> {
+impl<K,V> Collection for HashMap<K,V> {
     #[inline]
     fn len(&self) -> uint { self.length }
 }
@@ -256,18 +263,18 @@ impl<K,V> Mutable for HashMap<K,V> {
     }
 }
 
-impl<K : Eq + IterBytes,V> Map<K,V> for HashMap<K,V> {
+impl<K : Eq + AsBytes,V> Map<K,V> for HashMap<K,V> {
     #[inline]
     fn find<'a>(&'a self, key: &K) -> Option<&'a V> {
         let i = self.probe(key, DJBState::djbhash(key));
-        match self.table[i] {
-            Empty | Ghost(..)   => None,
-            Full(_, ref val, _) => Some(val),
+        match self.table.get(i) {
+            &Empty | &Ghost(..)  => None,
+            &Full(_, ref val, _) => Some(val),
         }
     }
 }
 
-impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
+impl<K : Eq + AsBytes,V> MutableMap<K,V> for HashMap<K,V> {
 
     #[inline]
     fn swap(&mut self, key: K, value: V) -> Option<V> {
@@ -280,7 +287,7 @@ impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
     fn pop(&mut self, key: &K) -> Option<V> {
         self.expand();
         let i = self.probe(key, DJBState::djbhash(key));
-        let (result,replacement) = match util::replace(&mut self.table[i], Empty) {
+        let (result,replacement) = match std::mem::replace(self.table.get_mut(i), Empty) {
             Empty       => (None,Empty),
             Ghost(k,h)  => (None,Ghost(k,h)),
             Full(k,v,h) => {
@@ -289,23 +296,23 @@ impl<K : Eq + IterBytes,V> MutableMap<K,V> for HashMap<K,V> {
                 (Some(v),Ghost(k,h))
             },
         };
-        self.table[i] = replacement;
+        *self.table.get_mut(i) = replacement;
         result
     }
 
     #[inline]
     fn find_mut<'a>(&'a mut self, key: &K) -> Option<&'a mut V> {
         let i = self.probe(key, DJBState::djbhash(key));
-        match self.table[i] {
-            Empty | Ghost(..)     => None,
-            Full(_,ref mut val,_) => Some(val),
+        match self.table.get_mut(i) {
+            &Empty | &Ghost(..)    => None,
+            &Full(_,ref mut val,_) => Some(val),
         }
     }
 }
 
 
 pub struct HashMapIterator<'a,K,V> {
-    priv iterator : vec::VecIterator<'a,Entry<K,V>>,
+    iterator : std::slice::Items<'a,Entry<K,V>>,
 }
 
 impl<'a,K,V> Iterator<(&'a K, &'a V)> for HashMapIterator<'a,K,V> {
@@ -325,10 +332,10 @@ impl<'a,K,V> Iterator<(&'a K, &'a V)> for HashMapIterator<'a,K,V> {
 /* ----------------------------------------------- */
 
 pub struct HashSet<T> {
-    priv map : HashMap<T,()>
+    map : HashMap<T,()>
 }
 
-impl<T : Eq + IterBytes> HashSet<T> {
+impl<T : Eq> HashSet<T> {
     #[inline]
     pub fn new() -> HashSet<T> { HashSet { map : HashMap::new() } }
 
@@ -336,9 +343,9 @@ impl<T : Eq + IterBytes> HashSet<T> {
     pub fn iter<'a>(&'a self) -> HashSetIterator<'a, T> {
         HashSetIterator { iterator: self.map.iter() }
     }
-}    
+}
 
-impl<T> Container for HashSet<T> {
+impl<T> Collection for HashSet<T> {
     #[inline]
     fn len(&self) -> uint { self.map.len() }
 }
@@ -348,7 +355,7 @@ impl<T> Mutable for HashSet<T> {
     fn clear(&mut self) { self.map.clear() }
 }
 
-impl<T : Eq + IterBytes> Set<T> for HashSet<T> {
+impl<T : Eq + AsBytes> Set<T> for HashSet<T> {
     #[inline]
     fn contains(&self, elt : &T) -> bool { self.map.contains_key(elt) }
 
@@ -384,7 +391,7 @@ impl<T : Eq + IterBytes> Set<T> for HashSet<T> {
     }
 }
 
-impl<T : Eq + IterBytes> MutableSet<T> for HashSet<T> {
+impl<T : Eq + AsBytes> MutableSet<T> for HashSet<T> {
     #[inline]
     fn insert(&mut self, value: T) -> bool {
         self.map.insert(value,())
@@ -397,7 +404,7 @@ impl<T : Eq + IterBytes> MutableSet<T> for HashSet<T> {
 }
 
 pub struct HashSetIterator<'a,T> {
-    priv iterator : HashMapIterator<'a,T,()>,
+    iterator : HashMapIterator<'a,T,()>,
 }
 
 impl<'a,T> Iterator<&'a T> for HashSetIterator<'a,T> {
@@ -415,9 +422,24 @@ impl<'a,T> Iterator<&'a T> for HashSetIterator<'a,T> {
 
 #[cfg(test)]
 mod tests {
-    extern mod extra;
+    extern crate test;
 
-    use super::{DJBState,HashMap,HashSet};
+    use super::{AsBytes,DJBState,HashMap,HashSet};
+    use std::mem::{transmute,size_of};
+    use std::raw::Slice;
+    use std::hash;
+
+    impl AsBytes for uint {
+        fn as_byte_vec<'a>(&'a self) -> &'a [u8] {
+            unsafe { transmute( Slice { data: self, len: size_of::<uint>() } ) }
+        }
+    }
+
+    impl <'a> AsBytes for &'a str {
+        fn as_byte_vec<'a>(&'a self) -> &'a [u8] {
+            self.as_bytes()
+        }
+    }
 
     #[test]
     fn test_empty() {
@@ -426,9 +448,9 @@ mod tests {
         assert_eq!(m.capacity(), 8);
         assert_eq!(m.find(&1), None);
 
-        let mut count = 0;
+        let mut count = 0u;
         for (_,_) in m.iter() { count += 1; }
-        assert_eq!(count, 0);
+        assert_eq!(count, 0u);
     }
 
     #[test]
@@ -451,9 +473,9 @@ mod tests {
             None => fail!("failure again!")
         }
 
-        let mut count = 0;
+        let mut count = 0u;
         for (_,_) in m.iter() { count += 1; }
-        assert_eq!(count, 1);
+        assert_eq!(count, 1u);
 
         match m.pop(&1) {
             Some(y) => assert_eq!(y,500),
@@ -472,10 +494,10 @@ mod tests {
         assert_eq!(m.len(),8);
         assert_eq!(m.capacity(),16);
         assert!( !m.insert(3, 12000) );
- 
-        let mut count = 0;
+
+        let mut count = 0u;
         for (_,_) in m.iter() { count += 1; }
-        assert_eq!(count, 8);
+        assert_eq!(count, 8u);
     }
 
     #[test]
@@ -483,9 +505,9 @@ mod tests {
         let s : HashSet<uint> = HashSet::new();
         assert_eq!(s.len(), 0);
         assert!(!s.contains(&3));
-        let mut count = 0;
+        let mut count = 0u;
         for _ in s.iter() { count += 1; }
-        assert_eq!(count, 0);
+        assert_eq!(count, 0u);
     }
 
     #[test]
@@ -497,9 +519,9 @@ mod tests {
         }
         assert_eq!(s.len(), 8);
         assert!(s.contains(&3));
-        let mut count = 0;
+        let mut count = 0u;
         for _ in s.iter() { count += 1; }
-        assert_eq!(count, 8);
+        assert_eq!(count, 8u);
         let empty : HashSet<uint> = HashSet::new();
         assert!( s.is_disjoint(&empty) );
         assert!( empty.is_subset(&s) );
@@ -507,13 +529,13 @@ mod tests {
     }
 
     #[bench]
-    fn hash_bench_siphash(b: &mut extra::test::BenchHarness) {
+    fn hash_bench_siphash(b: &mut test::Bencher) {
         let s = "abcdefghijklmnopqrstuvwxyz";
-        b.iter(|| { s.hash(); });
+        b.iter(|| { hash::hash(&s); });
     }
 
     #[bench]
-    fn hash_bench_djbhash(b: &mut extra::test::BenchHarness) {
+    fn hash_bench_djbhash(b: &mut test::Bencher) {
         let s = "abcdefghijklmnopqrstuvwxyz";
         b.iter(|| { DJBState::djbhash(&s); });
     }
