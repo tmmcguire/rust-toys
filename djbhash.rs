@@ -10,6 +10,8 @@
 #![ crate_type = "lib" ]
 
 use std::io::Writer;
+use std::raw::Slice;
+use std::mem::{transmute,size_of};
 
 // Simple Writer/IterBytes based implementation of the DJB hash
 // (See http://cr.yp.to/cdb/cdb.txt and http://www.cse.yorku.ca/~oz/hash.html)
@@ -19,6 +21,36 @@ struct DJBState {
 
 trait AsBytes {
     fn as_byte_vec<'a>(&'a self) -> &'a [u8];
+}
+
+impl AsBytes for uint {
+    fn as_byte_vec<'a>(&'a self) -> &'a [u8] {
+        unsafe { transmute( Slice { data: self, len: size_of::<uint>() } ) }
+    }
+}
+
+impl <'a> AsBytes for &'a str {
+    fn as_byte_vec<'a>(&'a self) -> &'a [u8] {
+        self.as_bytes()
+    }
+}
+
+impl AsBytes for String {
+    fn as_byte_vec<'a>(&'a self) -> &'a [u8] {
+        self.as_bytes()
+    }
+}
+
+impl AsBytes for Vec<u8> {
+    fn as_byte_vec<'a>(&'a self) -> &'a [u8] {
+        self.as_slice()
+    }
+}
+
+impl <'a> AsBytes for &'a [u8] {
+    fn as_byte_vec<'a>(&'a self) -> &'a [u8] {
+        self.as_slice()
+    }
 }
 
 impl DJBState {
@@ -40,12 +72,13 @@ impl DJBState {
 impl Writer for DJBState {
     #[inline]
     fn write(&mut self, buf : &[u8]) -> std::io::IoResult<()> {
-        let len = buf.len();
-        let mut i = 0;
-        while i < len { self.hash = (33u64 * self.hash) ^ buf[i] as u64; i += 1; }           /* 3.1s */
-        // for i in range(0, len) { self.hash = (33u64 * self.hash) ^ buf[i] as u64 }        /* 3.6s */
-        // for i in range(0, buf.len()) { self.hash = (33u64 * self.hash) ^ buf[i] as u64 }  /* 3.6s */
-        // for byte in buf.iter() { self.hash = (33u64 * self.hash) ^ *byte as u64 }         /* 3.8s */
+        // let len = buf.len();
+        // let mut i = 0;
+        // while i < len { self.hash = (33u64 * self.hash) ^ buf[i] as u64; i += 1; }       /* 3.1s */
+        // for i in range(0, len) { self.hash = (33u64 * self.hash) ^ buf[i] as u64 }       /* 3.6s */
+        for i in range(0, buf.len()) { self.hash = (33u64 * self.hash) ^ buf[i] as u64 } /* 3.6s */
+        // for byte in buf.iter() { self.hash = (33u64 * self.hash) ^ *byte as u64 }        /* 3.8s */
+        // buf.iter().map(|byte| { self.hash = (33u64 * self.hash) ^ *byte as u64 });       /* broke */
         Ok(())
     }
 
@@ -424,22 +457,8 @@ impl<'a,T> Iterator<&'a T> for HashSetIterator<'a,T> {
 mod tests {
     extern crate test;
 
-    use super::{AsBytes,DJBState,HashMap,HashSet};
-    use std::mem::{transmute,size_of};
-    use std::raw::Slice;
+    use super::{DJBState,HashMap,HashSet};
     use std::hash;
-
-    impl AsBytes for uint {
-        fn as_byte_vec<'a>(&'a self) -> &'a [u8] {
-            unsafe { transmute( Slice { data: self, len: size_of::<uint>() } ) }
-        }
-    }
-
-    impl <'a> AsBytes for &'a str {
-        fn as_byte_vec<'a>(&'a self) -> &'a [u8] {
-            self.as_bytes()
-        }
-    }
 
     #[test]
     fn test_empty() {
@@ -528,15 +547,29 @@ mod tests {
         assert!( s.is_superset(&empty) );
     }
 
+    #[test]
+    fn test_djbhash() {
+        let s = "abcdefghijklmnopqrstuvwxyz";
+        assert_eq!(DJBState::djbhash(&s), 10724590525090443198u64);
+        assert_eq!(DJBState::djbhash(&1u), 7567842156311844u64);
+        assert_eq!(DJBState::djbhash(&2u), 7567970011640775u64);
+    }
+
     #[bench]
     fn hash_bench_siphash(b: &mut test::Bencher) {
         let s = "abcdefghijklmnopqrstuvwxyz";
-        b.iter(|| { hash::hash(&s); });
+        let mut c = 0u64;
+        b.iter(|| { for _ in range(0u,100u) { c += hash::hash(&s); } });
+        println!("{}", c);
     }
 
     #[bench]
     fn hash_bench_djbhash(b: &mut test::Bencher) {
         let s = "abcdefghijklmnopqrstuvwxyz";
-        b.iter(|| { DJBState::djbhash(&s); });
+        let mut c = 0u64;
+        b.iter(|| {
+            for _ in range(0u,100u) { c += DJBState::djbhash(&s); }
+        });
+        println!("{}", c);
     }
 }
