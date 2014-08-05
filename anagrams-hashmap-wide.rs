@@ -1,6 +1,5 @@
 extern crate combinations;
 
-use std::os;
 use std::io::{BufferedReader,File};
 use std::collections::hashmap::{HashMap, HashSet};
 
@@ -47,7 +46,7 @@ fn search(letters : &[char], dictionary : &HashMap<Vec<char>,Vec<String>>) -> Ha
 fn main() {
     let width = 3;
 
-    let args = os::args();
+    let args = std::os::args();
     if args.len() < 2 { fail!("Usage: anagrams letters"); }
     let letters = get_letters(args.get(1).as_slice());
 
