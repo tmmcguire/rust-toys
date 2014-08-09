@@ -19,7 +19,7 @@ struct DJBState {
     hash : u64
 }
 
-trait AsBytes {
+pub trait AsBytes {
     fn as_byte_vec<'a>(&'a self) -> &'a [u8];
 }
 
