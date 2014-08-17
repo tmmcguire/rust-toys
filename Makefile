@@ -20,10 +20,10 @@ PYTHON = $(ALT)/mk_anadict.py $(ALT)/presser_one.py $(ALT)/presser_two.py $(ALT)
 all : libs $(PROGS)
 
 libs : $(LIBS)
-	rustc -L. -O --lib bisect.rs
-	rustc -L. -O --lib combinations.rs
-	rustc -L. -O --lib mmap.rs
-	rustc -L. -O --lib djbhash.rs
+	rustc -L. -O bisect.rs
+	rustc -L. -O combinations.rs
+	rustc -L. -O mmap.rs
+	rustc -L. -O djbhash.rs
 	touch libs
 
 $(RUST_P) : libs
