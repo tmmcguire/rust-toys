@@ -50,11 +50,7 @@ impl<'l> Equiv<&'l [u8]> for MapKey {
 
 impl AsBytes for MapKey {
     fn as_byte_vec<'a>(&'a self) -> &'a [u8] {
-        match self {
-            &MapKey(ref slice) => {
-                slice.as_byte_vec()
-            }
-        }
+        match self { &MapKey(ref slice) => slice.as_byte_vec() }
     }
 }
 
