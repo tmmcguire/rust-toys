@@ -12,7 +12,7 @@ module Key = struct
 end
 
 (* Set of strings *)
-module StringSet = Set.Make(String);;
+module StringSet = Set.Make (String);;
 
 (* Convert the input argument to a sorted char array *)
 let get_letters str =
@@ -64,7 +64,7 @@ let each_combination ~values ~r ~init ~fcn =
           copy (i+1)
         end
 
-      and next = fcn acc combination r in
+      and next = fcn acc combination in
 
       match bumpable (r-1) with
       | Some j -> begin
@@ -79,7 +79,7 @@ let main () =
   let t = load_dictionary ()
   and l = get_letters Sys.argv.(1)   (* "asdwtribnowplfglewhqagnbe" *)
   in
-  let handle acc combo r =
+  let handle acc combo =
     match Hashtbl.find t combo with
     | None -> acc
     | Some lst -> StringSet.union acc lst
