@@ -1,5 +1,5 @@
 [package]
-name = "rust"
+name    = "rust-toys"
 version = "1.0.0-beta"
 authors = ["Tommy M. McGuire <mcguire@crsr.net>"]
 
@@ -8,3 +8,6 @@ name="mk_anadict"
 
 [[bin]]
 name="mk_anadict_traits"
+
+[[bin]]
+name="anagrams-hashmap"
