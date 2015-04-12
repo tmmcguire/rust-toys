@@ -5,3 +5,6 @@ authors = ["Tommy M. McGuire <mcguire@crsr.net>"]
 
 [[bin]]
 name="mk_anadict"
+
+[[bin]]
+name="mk_anadict_traits"
