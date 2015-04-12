@@ -30,7 +30,7 @@ fn read_dict<R:Read>(reader : &mut BufReader<R>) -> HashMap<String,Vec<String>> 
 }
 
 fn sorted_keys<V:Clone>(dict : &HashMap<String,V>) -> Vec<String> {
-    let mut keys : Vec<String> = dict.keys().map( |k| k.clone() ).collect();
+    let mut keys : Vec<String> = dict.keys().cloned().collect();
     keys.sort();
     return keys;
 }
