@@ -1,39 +1,28 @@
 extern crate combinations;
+// extern crate time;
 
-use std::{iter,os};
-use std::io::{File,BufferedReader};
+use std::collections::{HashMap,HashSet};
+use std::env;
+use std::fs::File;
+use std::io::{BufRead,BufReader,Read};
 use std::path::Path;
-use std::collections::hashmap::{HashMap, HashSet};
-// use extra::time;
 
-// fn duration(tag : &str, start : time::Timespec, end : time::Timespec) {
-//     let d_sec = end.sec - start.sec;
-//     let d_nsec = end.nsec - start.nsec;
-//     if d_nsec >= 0 {
-//         println!("{:s}: {:?}", tag, time::Timespec {
-//             sec : d_sec,
-//             nsec : d_nsec
-//         });
-//     } else {
-//         println!("{:s}: {:?}", tag, time::Timespec {
-//             sec : d_sec - 1,
-//             nsec : d_nsec + 1000000000
-//         });
-//     }
-// }
-
-pub fn split_words(s : &str) -> Vec<String> { s.words().map(|w| w.to_string()).collect() }
+fn split_words(s : &str) -> Vec<String> {
+    s.split(" ").map(|w| w.to_string()).collect()
+}
 
 fn load_dictionary() -> HashMap<Vec<i8>,Vec<String>> {
-    let file = File::open( &Path::new("anadict.txt") );
-    let mut bufferedFile = BufferedReader::new(file);
+    let file = match File::open( &Path::new("anadict.txt") ) {
+        Ok(f)  => f,
+        Err(e) => panic!(e)
+    };
+    let buffered_file = BufReader::new(file);
     let mut map = HashMap::new();
-    for line in bufferedFile.lines() {
+    for line in buffered_file.lines() {
         let line = line.unwrap();
-        let words = split_words(line.as_slice());
-        let key : Vec<char> = words.get(0).as_slice().chars().collect();
-        map.insert(Vec::from_fn(key.len(), |i| *key.get(i) as i8),
-                   Vec::from_fn(words.len() - 1, |i| words.get(i+1).clone()));
+        let mut words = split_words(&line);
+        let key : Vec<i8> = words.remove(0).chars().map(|ch| ch as i8).collect();
+        map.insert(key, words);
     }
     return map;
 }
@@ -41,38 +30,37 @@ fn load_dictionary() -> HashMap<Vec<i8>,Vec<String>> {
 fn get_letters(s : &str) -> Vec<i8> {
     let mut t : Vec<char> = s.chars().collect();
     t.sort();
-    return Vec::from_fn(t.len(), |i| *t.get(i) as i8);
+    return t.iter().map(|&ch| ch as i8).collect();
 }
 
-fn search(letters : &[i8], dictionary : &HashMap<Vec<i8>,Vec<String>>) -> HashSet<String>
-{
+fn search(letters : &[i8], dictionary : &HashMap<Vec<i8>,Vec<String>>) -> HashSet<String> {
     let mut set = HashSet::new();
-    for i in iter::range(0, letters.len() + 1) {
+    for i in 0..letters.len() + 1 {
         // let start = time::get_time();
-        let mut key : Vec<i8> = Vec::from_elem(i, 0i8);
+        let mut key : Vec<i8> = vec![0; i];
         combinations::each_combination(letters, i, |combo| {
-            for j in iter::range(0, combo.len()) { *key.get_mut(j) = combo[j]; }
-            match dictionary.find(&key) {
+            for j in 0..combo.len() { key[j] = combo[j]; }
+            match dictionary.get(&key) {
                 Some(val) => {
                     for word in val.iter() { set.insert(word.clone()); }
                 }
                 None => { }
             }
         });
-        // duration("iteration", start, time::get_time());
+        // println!("iteration: {}", time::get_time() - start);
     }
     return set;
 }
 
 fn main() {
     // let start = time::get_time();
-    let args = os::args();
-    if args.len() < 2 { fail!("Usage: anagrams letters"); }
-    let letters = get_letters(args.get(1).as_slice());
-    // duration("get_letters", start, time::get_time());
+    let args : Vec<String> = env::args().collect();
+    if args.len() < 2 { panic!("Usage: anagrams letters"); }
+    let letters = get_letters(&args[1]);
+    // println!("get_letters: {}", time::get_time() - start);
     let dictionary = load_dictionary();
-    // duration("load_dictionary", start, time::get_time());
-    let set = search(letters.as_slice(),&dictionary);
-    // duration("search", start, time::get_time());
-    println!("{:u}", set.len());
+    // println!("load_dictionary: {}", time::get_time() - start);
+    let set = search(&letters,&dictionary);
+    // println!("search: {}", time::get_time() - start);
+    println!("{}", set.len());
 }
