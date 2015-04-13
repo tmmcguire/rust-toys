@@ -21,3 +21,6 @@ name="anagrams-hashmap"
 
 [dependencies.combinations]
 path = "components/combinations"
+
+[dependencies]
+time = "0.1.24"
