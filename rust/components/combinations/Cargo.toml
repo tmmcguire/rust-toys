@@ -1,4 +1,7 @@
 [package]
 name = "combinations"
-version = "0.0.1"
+version = "1.0.0-beta"
 authors = ["Tommy M. McGuire <mcguire@crsr.net>"]
+
+[lib]
+name = "combinations"
