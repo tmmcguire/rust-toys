@@ -19,8 +19,14 @@ name="mk_anadict_traits"
 [[bin]]
 name="anagrams-hashmap"
 
+[[bin]]
+name="anagrams-djbhashmap"
+
 [dependencies.combinations]
 path = "components/combinations"
+
+[dependencies.djbhashmap]
+path = "components/djbhashmap"
 
 [dependencies]
 time = "0.1.24"
