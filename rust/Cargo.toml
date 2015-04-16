@@ -31,5 +31,8 @@ path = "components/combinations"
 [dependencies.djbhashmap]
 path = "components/djbhashmap"
 
+[dependencies.bisect]
+path = "components/bisect"
+
 [dependencies]
 time = "0.1.24"
