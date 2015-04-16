@@ -54,30 +54,30 @@ pub fn each_combination<T,F>(values : &[T], r : usize, mut fun : F) -> () where 
     }
  }
 
-//  /// Iterate over `r`-length subsequences of elements from `values`.
-//  ///
-//  /// This is an alternative to each_combination that uses references to
-//  /// avoid copying the elements of the values vector.
-//  /// 
-//  /// To avoid memory allocations and copying, the iterator will be
-//  /// passed a reference to a vector containing references to the
-//  /// elements in the original `values` vector.
-//  ///
-//  /// # Arguments
-//  ///
-//  /// * `values` - A vector of values from which the combinations are
-//  /// chosen
-//  ///
-//  /// * `r` - The length of the emitted combinations
-//  ///
-//  /// * `fun` - The function to iterate over the combinations
-//  #[inline]
-//  pub fn each_combination_ref<'v,T>(values : &'v [T],
-//                                    r      : uint,
-//                                    fun    : |combo:&[&'v T]| -> ()) {
-//      let v = Vec::from_fn(values.len(), |i| &values[i]);
-//      each_combination(v.as_slice(), r, fun);
-//  }
+ /// Iterate over `r`-length subsequences of elements from `values`.
+ ///
+ /// This is an alternative to each_combination that uses references to
+ /// avoid copying the elements of the values vector.
+ /// 
+ /// To avoid memory allocations and copying, the iterator will be
+ /// passed a reference to a vector containing references to the
+ /// elements in the original `values` vector.
+ ///
+ /// # Arguments
+ ///
+ /// * `values` - A vector of values from which the combinations are
+ /// chosen
+ ///
+ /// * `r` - The length of the emitted combinations
+ ///
+ /// * `fun` - The function to iterate over the combinations
+ #[inline]
+// pub fn each_combination<T,F>(values : &[T], r : usize, mut fun : F) -> () where T : Clone, F : FnMut(&[T]) -> () {
+pub fn each_combination_ref<'v,T,F>(values : &'v [T], r : usize, fun : F) -> () where F : FnMut(&[&'v T]) -> () {
+    let v : Vec<&T> = values.iter().map(|elt| { elt }).collect();
+ //     let v = Vec::from_fn(values.len(), |i| &values[i]);
+      each_combination(&v, r, fun);
+ }
 
 //  /// Reverse a slice of a vector in place.
 //  ///
