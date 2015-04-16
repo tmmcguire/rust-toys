@@ -1,131 +1,156 @@
-#![ feature(macro_rules) ]
+use std::fmt;
+use std::fmt::{Display,Formatter};
+use std::ops::{Add,Div,Mul};
 
-use std::num::NumCast;
-use std::fmt::{Formatter,FormatError,Show};
-
-struct MComplex {
+#[derive(Debug,Copy,Clone)]
+pub struct Complex {
     r : f64,
     j : f64
 }
 
-impl MComplex {
-    fn conjugate(&self) -> MComplex { MComplex { j : -self.j, .. *self } }
+impl Complex {
+    fn conjugate(&self) -> Complex { Complex { j : -self.j, .. *self } }
     fn magnitude(&self) -> f64 { ( self.r * self.r + self.j * self.j ).sqrt() }
 }
 
-impl Show for MComplex {
-    fn fmt(&self, formatter : &mut Formatter) -> Result<(),FormatError> {
-        write!(formatter, "{} + {}i", self.r, self.j)
+impl Display for Complex {
+    fn fmt(&self, formatter : &mut Formatter) -> fmt::Result {
+        write!(formatter, "{} + {}j", self.r, self.j)
     }
 }
 
-trait ToMComplex { fn to_complex(&self) -> MComplex; }
+// Conversions to Complex from f64
 
-impl ToMComplex for f64 {
-    fn to_complex(&self) -> MComplex { MComplex { r : *self, j : 0.0f64 } }
+trait ToComplex { fn to_complex(&self) -> Complex; }
+
+impl ToComplex for f64 {
+    fn to_complex(&self) -> Complex { Complex { r : *self, j : 0.0f64 } }
 }
 
-// Can't do this:
+// Implementation of addition and multiplication for Complex and Complex
 
-// impl Add<f64,MComplex> for MComplex {
-//     fn add(&self, rhs : &f64) -> MComplex {
-//         MComplex { r : self.r + *rhs, j : self.j }
-//     }
-// }
-
-// complex.rs:52:0: 56:1 error: conflicting implementations for a trait
-// ...
-// complex.rs:24:0: 28:1 error: conflicting implementations for a trait
-// ...
-// complex.rs:81:12: 81:17 error: multiple applicable methods in scope
-// ...
-
-// But can use double dispatch:
-
-trait MComplexRhs {
-    fn add_complex(&self, lhs: &MComplex) -> MComplex;
-    fn sub_complex(&self, lhs: &MComplex) -> MComplex;
-    fn mul_complex(&self, lhs: &MComplex) -> MComplex;
-}
-
-// Implementation of Add, etc. using double dispatch on MComplexRhs.
-impl<R : MComplexRhs> Add<R, MComplex> for MComplex {
-    fn add(&self, rhs: &R) -> MComplex { rhs.add_complex(self) }
-}
-impl<R : MComplexRhs> Sub<R, MComplex> for MComplex {
-    fn sub(&self, rhs: &R) -> MComplex { rhs.sub_complex(self) }
-}
-impl<R : MComplexRhs> Mul<R, MComplex> for MComplex {
-    fn mul(&self, rhs: &R) -> MComplex { rhs.mul_complex(self) }
-}
-
-impl MComplexRhs for MComplex {
-    fn add_complex(&self, lhs: &MComplex) -> MComplex {
-        MComplex { r : self.r + lhs.r, j : self.j + lhs.j }
-    }
-    fn sub_complex(&self, lhs: &MComplex) -> MComplex {
-        MComplex { r : lhs.r - self.r, j : lhs.j - self.j }
-    }
-    fn mul_complex(&self, lhs: &MComplex) -> MComplex {
-        MComplex { r : (lhs.r * self.r) - (lhs.j * self.j),
-                  j : (lhs.r * self.j) + (lhs.j * self.r) }
+impl Add<Complex> for Complex {
+    type Output = Complex;
+    fn add(self, rhs : Complex) -> Complex {
+        Complex { r : self.r + rhs.r, j : self.j + rhs.j }
     }
 }
 
-// Implement MComplexRhs for generic scalar rhs's
-macro_rules! scalar_impl(
-    ($foo:ty) => (
-        impl MComplexRhs for $foo {
-            fn add_complex(&self, lhs: &MComplex) -> MComplex {
-                MComplex { r : lhs.r + (*self as f64), j : lhs.j }
-            }
-            fn sub_complex(&self, lhs: &MComplex) -> MComplex {
-                MComplex { r : lhs.r - (*self as f64), j : lhs.j }
-            }
-            fn mul_complex(&self, lhs: &MComplex) -> MComplex {
-                MComplex { r : (lhs.r * (*self as f64)), j : (lhs.j * (*self as f64)) }
-            }
+impl Mul<Complex> for Complex {
+    type Output = Complex;
+    fn mul(self, rhs : Complex) -> Complex {
+        Complex {
+            r : (self.r * rhs.r) - (self.j * rhs.j),
+            j : (self.r * rhs.j) + (self.j * rhs.r)
         }
-    )
-)
+    }
+}
 
-scalar_impl!(f64)
-scalar_impl!(int)
-scalar_impl!(uint)
+// Implementation of division for Complex
 
-impl Div<MComplex,MComplex> for MComplex {
-    fn div(&self, rhs : &MComplex) -> MComplex {
+impl Div<Complex> for Complex {
+    type Output = Complex;
+    fn div(self, rhs : Complex) -> Complex {
         let rhs_conj = rhs.conjugate();
         let num = self * rhs_conj;
-        let denom = rhs * rhs_conj;
-        MComplex { r : num.r / denom.r, j : num.j / denom.r }
+        let den = rhs * rhs_conj;
+        Complex { r : num.r / den.r, j : num.j / den.r }
     }
 }
 
-impl ToPrimitive for MComplex {
-    fn to_i64(&self)   -> Option<i64>   { Some(self.magnitude() as i64)   }
-    fn to_u64(&self)   -> Option<u64>   { Some(self.magnitude() as u64)   }
-    fn to_f64(&self)   -> Option<f64>   { Some(self.magnitude() as f64)   }
+// Implementation of Addition for Complex and f64
+
+// // LHS: Complex, RHS: f64
+impl Add<f64> for Complex {
+    type Output = Complex;
+    fn add(self, rhs : f64) -> Complex {
+        Complex { r : self.r + rhs, j : self.j }
+    }
 }
 
-impl NumCast for MComplex {
-    fn from<N:NumCast>(n: N) -> Option<MComplex> { n.to_f64().map( |v| v.to_complex() ) }
+// // LHS: f64, RHS: Complex
+impl Add<Complex> for f64 {
+    type Output = Complex;
+    fn add(self, rhs : Complex) -> Complex {
+        Complex { r : self + rhs.r, j : rhs.j }
+    }
 }
+
+// // Etc., etc., etc.
+
+// Implementation of multiplication for most other primitives
+// // Note: probably not safe for u64 and i64.
+
+macro_rules! scalar_impl(
+    ($foo:ty) => (
+
+        // Implementation of multiplication for Complex and $foo
+        impl Mul<$foo> for Complex {
+            type Output = Complex;
+            fn mul(self, rhs : $foo) -> Complex {
+                Complex { r : self.r * (rhs as f64), j : self.j * (rhs as f64) }
+            }
+        }
+        impl Mul<Complex> for $foo {
+            type Output = Complex;
+            fn mul(self, rhs : Complex) -> Complex {
+                Complex { r : (self as f64) * rhs.r, j : (self as f64) * rhs.j }
+            }
+        }
+
+    )
+);
+
+scalar_impl!(i8);
+scalar_impl!(i16);
+scalar_impl!(i32);
+scalar_impl!(i64);
+scalar_impl!(isize);
+scalar_impl!(u8);
+scalar_impl!(u16);
+scalar_impl!(u32);
+scalar_impl!(u64);
+scalar_impl!(usize);
+scalar_impl!(f64);
+scalar_impl!(f32);
 
 fn main() {
-    let x = MComplex { r : 1.0, j : 0.0 };
-    let y = MComplex { r : 3.0, j : 0.0 };
-    let z = x + y;
-    let w = NumCast::from(2i).unwrap();
-    println!("{}", ( y + 3.0f64                ));
-    println!("{}", ( y + 3.0f64.to_complex()   ));
-    println!("{}", ( y + 3i                    ));
-    println!("{}", ( x * 3.0f64                ));
-    println!("{}", ( x * 4i                    ));
-    println!("{}", ( z / w                     ));
+    let w = 2.0.to_complex();
 
-    let n = MComplex { r : 0.0, j : 1.0 };
-    println!("{}", ( n * n                     ));
+    let x = Complex { r : 1.0, j : 0.0 };
+    let y = Complex { r : 3.0, j : 0.0 };
+    let z = x + y;
+    println!("  z: {:?}", z);
+    // =>   z: Complex { r: 4, j: 0 }
+    println!("{}", ( z / w                  ));
+    // => 2 + 0j
+
+    println!("{}", ( y + 3.0                ));
+    // => 6 + 0j
+    println!("{}", ( 3.0 + y                ));
+    // => 6 + 0j
+
+    println!("{}", ( y * 3isize             ));
+    // => 9 + 0j
+    println!("{}", ( y * 3.0f64             ));
+    // => 9 + 0j
+    println!("{}", ( 4u8 * y                ));
+    // => 12 + 0j
+
+    let n = Complex { r : 0.0, j : 1.0 };
+    println!("{}", (  n * n                 ));
+    // => -1 + 0j
+    println!("{}", ( (n * n) * 2            ));
+    // => -2 + 0j
+
+    let mu : Complex = (n * n) * 2;
+    println!("{}", mu.magnitude() );
+    // => 2
+
+    // Without type annotation:
+    // src/bin/complex.rs:146:20: 146:34 error: the type of this value must be known in this context
+    // src/bin/complex.rs:146     println!("{}", mu.magnitude() );
+    //                                           ^~~~~~~~~~~~~~
 }
 
 // Notes: i => j, suggested by englabenny and dfjkfskjhfshdfjhsdjl on reddit.

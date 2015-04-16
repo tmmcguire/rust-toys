@@ -28,6 +28,9 @@ name="anagrams-vectors"
 [[bin]]
 name="hashing-performance"
 
+[[bin]]
+name="complex"
+
 [dependencies.combinations]
 path = "components/combinations"
 
