@@ -23,6 +23,9 @@ name="anagrams-hashmap"
 name="anagrams-djbhashmap"
 
 [[bin]]
+name="anagrams-vectors"
+
+[[bin]]
 name="hashing-performance"
 
 [dependencies.combinations]
