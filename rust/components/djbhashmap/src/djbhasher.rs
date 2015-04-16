@@ -1,17 +1,17 @@
 use std::hash::Hasher;
 
-pub struct DJBState {
+pub struct DJBHasher {
     hash : u64
 }
 
-impl DJBState {
+impl DJBHasher {
     #[inline]
-    pub fn new() -> DJBState {
-        DJBState { hash : 5381u64 }
+    pub fn new() -> DJBHasher {
+        DJBHasher { hash : 5381u64 }
     }
 }
 
-impl Hasher for DJBState {
+impl Hasher for DJBHasher {
     fn finish(&self) -> u64 {
         self.hash
     }

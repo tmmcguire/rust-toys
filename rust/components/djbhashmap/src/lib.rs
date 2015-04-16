@@ -1,11 +1,11 @@
-mod djbhasher;
-mod entry;
+pub mod djbhasher;
+pub mod entry;
 
 use std::borrow::Borrow;
 use std::cmp::PartialEq;
 use std::hash::{Hash,Hasher};
 
-use djbhasher::DJBState;
+use djbhasher::DJBHasher;
 use entry::Entry;
 
 const PERTURB_SHIFT : u64 = 5;
@@ -141,7 +141,7 @@ impl<K,V> HashMap<K,V> where K : Hash + Eq {
 
     #[inline]
     pub fn find_equiv<'a, Q>(&'a self, k : &Q) -> Option<&'a V> where Q : Hash + PartialEq<K> {
-        let mut hasher = DJBState::new();
+        let mut hasher = DJBHasher::new();
         k.hash(&mut hasher);
         let hash = hasher.finish();
         let i = self.probe_equiv(k, hash);
@@ -167,7 +167,7 @@ impl<K,V> HashMap<K,V> where K : Hash + Eq {
 
     pub fn insert(&mut self, k : K, v : V) -> Option<V> {
         self.expand();
-        let mut hasher = DJBState::new();
+        let mut hasher = DJBHasher::new();
         k.hash(&mut hasher);
         let hash = hasher.finish();
         self.swap_with_hash(k, hash, v)
