@@ -25,13 +25,13 @@ fn load_dictionary() -> HashMap<Vec<i8>,Vec<String>> {
         let key : Vec<i8> = words.remove(0).chars().map(|ch| ch as i8).collect();
         map.insert(key, words);
     }
-    return map;
+    map
 }
 
 fn get_letters(s : &str) -> Vec<i8> {
     let mut t : Vec<char> = s.chars().collect();
     t.sort();
-    return t.iter().map(|&ch| ch as i8).collect();
+    t.iter().map(|&ch| ch as i8).collect()
 }
 
 fn search(letters : &[i8], dictionary : &HashMap<Vec<i8>,Vec<String>>) -> HashSet<String> {
@@ -50,7 +50,7 @@ fn search(letters : &[i8], dictionary : &HashMap<Vec<i8>,Vec<String>>) -> HashSe
         });
         // println!("iteration: {}", time::get_time() - start);
     }
-    return set;
+    set
 }
 
 fn main() {
