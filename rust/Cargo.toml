@@ -22,6 +22,9 @@ name="anagrams-hashmap"
 [[bin]]
 name="anagrams-djbhashmap"
 
+[[bin]]
+name="hashing-performance"
+
 [dependencies.combinations]
 path = "components/combinations"
 

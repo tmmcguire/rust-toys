@@ -1,51 +1,49 @@
-extern mod extra;
+extern crate time;
+extern crate djbhashmap;
 
-use extra::time;
-
-fn duration(f : || -> ()) -> time::Timespec {
-    let start = time::get_time();
-    f();
-    let end = time::get_time();
-    let d_sec = end.sec - start.sec;
-    let d_nsec = end.nsec - start.nsec;
-    if d_nsec >= 0 {
-        time::Timespec { sec : d_sec, nsec : d_nsec }
-    } else {
-        time::Timespec { sec : d_sec - 1, nsec : d_nsec + 1000000000 }
-    }
-}
-
-fn to_float(t : &time::Timespec) -> f64 {
-    (t.sec as f64) + ((t.nsec as f64) / 1000000000.0f64)
-}
+use std::hash::{Hash,Hasher,SipHasher};
+use djbhashmap::djbhasher::DJBHasher;
     
 fn thirtythree_million_siphashes() {
-    let s = ~"abcdefghijklmnopqrstuvwxyz";
+    let s = "abcdefghijklmnopqrstuvwxyz";
     let mut potato = 0u64;
-    for _ in range(0, 33000000) {
-        potato += s.hash();
+    for _ in 0..33000000 {
+        let mut hasher = SipHasher::new();
+        s.hash(&mut hasher);
+        potato += hasher.finish();
     }
-    println!("{:?}", potato);
+    println!("{}", potato);
 }
 
-fn djbhash(bytes : &[u8]) -> u64 {
-    let mut hash = 5381u64;
-    for byte in bytes.iter() {
-        hash = (33u64 * hash) ^ *byte as u64;
-    }
-    return hash;
+fn siphash_duration() -> time::Duration {
+    let start = time::get_time();
+    thirtythree_million_siphashes();
+    let duration = time::get_time() - start;
+    println!("sip: {}", duration);
+    duration
 }
+
     
 fn thirtythree_million_djbhashes() {
-    let s = ~"abcdefghijklmnopqrstuvwxyz";
+    let s = "abcdefghijklmnopqrstuvwxyz";
     let mut potato = 0u64;
-    for _ in range(0, 33000000) {
-        potato += djbhash(s.as_bytes());
+    for _ in 0..33000000 {
+        let mut hasher = DJBHasher::new();
+        s.hash(&mut hasher);
+        potato += hasher.finish();
     }
-    println!("{:?}", potato);
+    println!("{}", potato);
+}
+
+fn djbhash_duration() -> time::Duration {
+    let start = time::get_time();
+    thirtythree_million_djbhashes();
+    let duration = time::get_time() - start;
+    println!("djb: {}", duration);
+    duration
 }
 
 fn main() {
-    println!("sip: {:?}", to_float(&duration(thirtythree_million_siphashes)));
-    println!("djb: {:?}", to_float(&duration(thirtythree_million_djbhashes)));
+    let _ = siphash_duration();
+    let _ = djbhash_duration();
 }
