@@ -3,3 +3,5 @@ lib*so
 target
 anadict.txt*
 Cargo.lock
+nimcache
+elapsed-times
