@@ -47,7 +47,7 @@ pub fn each_combination<T,F>(values : &[T], r : usize, mut fun : F) -> () where 
         if indices[0] > max_indices0 { break; }
         // Fix up the indices and the combination from i to r-1
         combination[i] = values[ indices[i] ].clone();
-        for i in (i+1..r) {
+        for i in i+1..r {
             indices[i] = indices[i-1] + 1;
             combination[i] = values[ indices[i] ].clone();
         }
