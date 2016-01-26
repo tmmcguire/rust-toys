@@ -58,7 +58,7 @@ trait DictWriter : Write {
     fn write_dict(&mut self, dict : &HashMap<String,Vec<String>>) {
         let keys = dict.sorted_keys(); // needed for lifetime
         for key in keys.iter() {
-            let line : String = dict.get(key).unwrap().connect(" ");
+            let line : String = dict.get(key).unwrap().join(" ");
             match write!( self, "{} {}\n", *key, line ) {
                 Ok(_)  => { }
                 Err(e) => { panic!(e) }

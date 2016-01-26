@@ -37,7 +37,7 @@ fn sorted_keys<V:Clone>(dict : &HashMap<String,V>) -> Vec<String> {
 
 fn print_dict<W:Write>(writer : &mut BufWriter<W>, dict : HashMap<String,Vec<String>>) {
     for key in sorted_keys(&dict).iter() {
-        let line : String = dict.get(key).unwrap().connect(" ");
+        let line : String = dict.get(key).unwrap().join(" ");
         match write!( writer, "{} {}\n", *key, line ) {
             Err(e) => { panic!(e) },
             _ => { }
