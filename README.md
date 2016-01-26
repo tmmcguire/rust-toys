@@ -21,6 +21,8 @@ Fun and exciting explorations of [Rust](http://www.rust-lang.org) and some alter
 
 * **anagrams-vectors-tasks.rs** Multiple tasks with all of the dictionaries, each getting some of the keys to search.
 
+By the way, the standard argument string is "asdwtribnowplfglewhqagnbe".
+
 Supporting files
 ----------------
 
