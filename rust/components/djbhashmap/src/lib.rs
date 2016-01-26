@@ -4,6 +4,7 @@ pub mod entry;
 use std::borrow::Borrow;
 use std::cmp::PartialEq;
 use std::hash::{Hash,Hasher};
+use std::slice::Iter;
 
 use djbhasher::DJBHasher;
 use entry::Entry;
@@ -176,7 +177,65 @@ impl<K,V> HashMap<K,V> where K : Hash + Eq {
     pub fn get<Q>(&self, k : &Q) -> Option<&V> where K : Borrow<Q>, Q : Hash + PartialEq<K> {
         self.find_equiv(k)
     }
+
+    pub fn iter(&self) -> HashMapIter<K,V> {
+        HashMapIter { inner: self.table.iter() }
+    }
+
+    pub fn keys(&self) -> HashMapKeys<K,V> {
+        HashMapKeys { inner: self.iter() }
+    }
 }
+
+#[test]
+fn test_map_1() {
+    let mut map = HashMap::new();
+    map.insert("hello", 1);
+    assert_eq!(map.get(&"hello"), Some(&1));
+    assert_eq!(map.get(&"foo"), None);
+}
+
+// ----------------------------------------
+
+pub struct HashMapIter<'l,K: 'l,V: 'l> {
+    inner: Iter<'l,Entry<K,V>>,
+}
+
+impl<'l,K,V> Iterator for HashMapIter<'l,K,V> {
+    type Item = (&'l K, &'l V);
+    fn next(&mut self) -> Option<(&'l K, &'l V)> {
+        let mut n = self.inner.next();
+        loop {
+            match n {
+                Some(entry) if entry.is_full() => {
+                    return Some((entry.key().unwrap(), entry.value().unwrap()))
+                }
+                Some(..) => {
+                    n = self.inner.next();
+                }
+                None => {
+                    return None;
+                }
+            }
+        }
+    }
+}
+
+pub struct HashMapKeys<'l,K: 'l,V: 'l> {
+    inner: HashMapIter<'l,K,V>,
+}
+
+impl<'l,K,V> Iterator for HashMapKeys<'l,K,V> {
+    type Item = &'l K;
+    fn next(&mut self) -> Option<&'l K> {
+        match self.inner.next() {
+            Some((ref k, _)) => Some(k),
+            None => None
+        }
+    }
+}
+
+// ----------------------------------------
 
 pub struct HashSet<T> {
     map : HashMap<T,()>
@@ -197,5 +256,9 @@ impl<T> HashSet<T> where T : Hash + Eq {
 
     pub fn len(&self) -> usize {
         self.map.len()
+    }
+
+    pub fn iter(&self) -> HashMapKeys<T,()> {
+        self.map.keys()
     }
 }
