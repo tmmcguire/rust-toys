@@ -39,4 +39,18 @@ impl<K, V> Entry<K,V> {
             Entry::Full(ref k, _, h) | Entry::Ghost(ref k, h) => hash == h && key == k,
         }
     }
+
+    pub fn key(&self) -> Option<&K> {
+        match *self {
+            Entry::Full(ref k,_,_) => Some(k),
+            _ => None
+        }
+    }
+
+    pub fn value<'l>(&'l self) -> Option<&'l V> {
+        match *self {
+            Entry::Full(_,ref v,_) => Some(v),
+            _ => None
+        }
+    }
 }
