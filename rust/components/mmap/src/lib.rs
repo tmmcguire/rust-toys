@@ -1,112 +1,170 @@
-// #![ crate_id ="mmap#1.0" ]
-// #![ crate_type = "lib" ]
+extern crate libc;
 
-// extern crate libc;
+macro_rules! unwrap {
+    ($e:expr) => {
+        match $e {
+            Some(v) => v,
+            None => panic!(concat!(stringify!($e), ": unwrap! produced None"))
+        }
+    }
+}
 
-// use std::{os,slice};
+// A file descriptor, open for reading.
+struct FileDescriptor(libc::c_int);
 
-// pub mod raw {
-//     extern crate libc;
+impl Drop for FileDescriptor {
+    fn drop(&mut self) {
+        let FileDescriptor(fd) = *self;
+        unsafe {
+            libc::close(fd);
+        }
+    }
+}
 
-//     extern {
-//         pub fn mmap(addr : *libc::c_char, length : libc::size_t, 
-//                     prot : libc::c_int,   flags  : libc::c_int, 
-//                     fd   : libc::c_int,   offset : libc::off_t) -> *u8;
-//         pub fn munmap(addr : *u8, length : libc::size_t) -> libc::c_int;
-//     }
+impl FileDescriptor {
+    unsafe fn open(filename: &str) -> Result<FileDescriptor,String> {
+        if let Ok(file) = std::ffi::CString::new(filename) {
+            let fd = libc::open(file.as_ptr(), libc::O_RDONLY, 0);
+            if fd >= 0 {
+                Ok( FileDescriptor(fd) )
+            } else {
+                Err( format!("failure in open({}): {}", filename, std::io::Error::last_os_error()) )
+            }
+        } else {
+            Err( format!("cannot convert filename to CString: {}", filename) )
+        }
+    }
+}
 
-//     From /usr/include/asm-generic/mman-common.h on Linux
+#[test]
+fn test_open_success() {
+    unsafe {
+        match FileDescriptor::open("Cargo.toml") {
+            Ok(_) => { },
+            Err(e) => { panic!(e); }
+        }
+    }
+}
 
-//     prot values
-//     pub static PROT_NONE   : libc::c_int = 0x0;
-//     pub static PROT_READ   : libc::c_int = 0x1;
-//     pub static PROT_WRITE  : libc::c_int = 0x2;
-//     pub static PROT_EXEC   : libc::c_int = 0x4;
-//     ...
+#[test]
+fn test_open_failure() {
+    unsafe {
+        match FileDescriptor::open("nonexistent") {
+            Ok(FileDescriptor(f)) => { panic!("open nonexistent file succeded: {}", f); },
+            Err(_) =>  { }
+        }
+    }
+}
 
-//     flags
-//     pub static MAP_SHARED  : libc::c_int = 0x1;
-//     pub static MAP_PRIVATE : libc::c_int = 0x2;
-//     ...
-// }
+// -------------------------------------
 
-// struct FileDescriptor(libc::c_int);
+impl FileDescriptor {
+    unsafe fn get_size(&self) -> Result<libc::size_t,String> {
+        let FileDescriptor(fd) = *self;
+        let mut stat: libc::stat = std::mem::zeroed();
+        if libc::fstat(fd, &mut stat) < 0 {
+            Err( format!("failure in fstat(): {}", std::io::Error::last_os_error()) )
+        } else {
+            Ok( stat.st_size as libc::size_t )
+        }
+    }
 
-// impl Drop for FileDescriptor {
-//     #[inline(never)]
-//     fn drop(&mut self) { unsafe { match self { &FileDescriptor(fd) => libc::close(fd) }; () } }
-// }
+    unsafe fn get_fd(&self) -> &libc::c_int { &self.0 }
+}
 
-// #[inline(never)]
-// unsafe fn open(filename : &str) -> FileDescriptor {
-//     let fd = filename.with_c_str( |cs| { libc::open(cs, libc::O_RDONLY as libc::c_int, 0) } );
-//     if fd < 0 { fail!(format!("failure in open({:s}): {:s}", filename, os::last_os_error())); }
-//     return FileDescriptor(fd);
-// }
+#[test]
+fn test_get_size() {
+    use std::os::unix::fs::MetadataExt;
+    unsafe {
+        if let Ok(m) = std::fs::metadata("Cargo.toml") {
+            let res = FileDescriptor::open("Cargo.toml")
+                .and_then(|fd| { fd.get_size() })
+                .and_then(|sz| { if sz == m.size() as usize { Ok(true) } else { Err(format!("{} != 149", sz)) }});
+            if res.is_err() {
+                panic!(res.unwrap_err());
+            }
+        } else {
+            panic!("cannot get metadata for Cargo.toml");
+        }
+    }
+}
+// =====================================
 
-// #[inline(never)]
-// unsafe fn fstat(fd : &FileDescriptor) -> libc::stat {
-//     match fd {
-//         &FileDescriptor(fd) => {
-//             target_arch = "x86_64", target_os = "linux" or target_os = "android"
-//             let mut s = libc::stat {
-//                 st_dev        : 0,
-//                 st_ino        : 0,
-//                 st_mode       : 0,
-//                 st_nlink      : 0,
-//                 st_uid        : 0,
-//                 st_gid        : 0,
-//                 st_rdev       : 0,
-//                 st_size       : 0,
-//                 st_blksize    : 0,
-//                 st_blocks     : 0,
-//                 st_atime      : 0,
-//                 st_atime_nsec : 0,
-//                 st_mtime      : 0,
-//                 st_mtime_nsec : 0,
-//                 st_ctime      : 0,
-//                 st_ctime_nsec : 0,
-//                 __pad0        : 0,
-//                 __unused      : [0,0,0]
-//             };
-//             if libc::fstat(fd, &mut s) < 0 { fail!(format!("failure in fstat(): {:s}", os::last_os_error())); }
-//             return s;
-//         }
-//     }
-// }
+pub struct MappedRegion {
+    _fd: FileDescriptor,        // unused after construction; needed to keep fd open
+    ptr: *mut u8,
+    sz: libc::size_t,
+}
 
-// struct MappedRegion {
-//     reg : *u8,
-//     siz : libc::size_t
-// }
+impl Drop for MappedRegion {
+    fn drop(&mut self) {
+        unsafe {
+            if libc::munmap(self.ptr as *mut libc::c_void, self.sz) < 0 {
+                panic!("cannot munmap: {}", std::io::Error::last_os_error());
+            }
+        }
+    }
+}
+// -------------------------------------
 
-// impl Drop for MappedRegion {
-//     #[inline(never)]
-//     fn drop(&mut self) {
-//         unsafe {
-//             if raw::munmap(self.reg, self.siz) < 0 {
-//                 fail!(format!("munmap(): {:s}", os::last_os_error()));
-//             }
-//         }
-//     }
-// }
+impl MappedRegion {
 
-// #[inline(never)]
-// unsafe fn mmap(fd : &FileDescriptor, size : libc::size_t) -> MappedRegion {
-//     match fd {
-//         &FileDescriptor(fd) => {
-//             let buf = raw::mmap(0 as *libc::c_char, size, raw::PROT_READ, raw::MAP_SHARED, fd, 0);
-//             if buf == -1 as *u8 { fail!(format!("mmap(): {:s}", os::last_os_error())); }
-//             MappedRegion { reg : buf, siz : size }
-//         }
-//     }
-//  }
+    pub fn mmap(filename: &str) -> Result<MappedRegion,String> {
+        unsafe {
+            match FileDescriptor::open(filename) {
+                Ok(fd) => map(fd),
+                Err(e) => Err(e)
+            }
+        }
+    }
 
-// pub fn with_mmap_file_contents<U>(filename : &str, f : |v:&[u8]| -> U) -> U {
-//     unsafe {
-//         let fd = open(filename);
-//         let st = fstat(&fd);
-//         let buf = mmap(&fd, st.st_size as libc::size_t);
-//         return slice::raw::buf_as_slice(buf.reg, buf.siz as uint, f);
-//     }
-// }
+    pub fn get_slice(&self) -> &[u8] {
+        unsafe {
+            std::slice::from_raw_parts(self.ptr, self.sz as usize)
+        }
+    }
+
+    pub fn get_str<'s>(&'s self) -> Result<&'s str,String> {
+        std::str::from_utf8(self.get_slice()).map_err(|e| { format!("{}", e) })
+    }
+}
+
+// -------------------------------------
+
+unsafe fn map(fd: FileDescriptor) -> Result<MappedRegion,String> {
+    match fd.get_size() {
+        Ok(sz) => {
+            let address = libc::mmap(0 as *mut libc::c_void, sz, libc::PROT_READ, libc::MAP_PRIVATE, *fd.get_fd(), 0);
+            if address < 0 as *mut libc::c_void {
+                Err( format!("failure in mmap(): {}", std::io::Error::last_os_error()) )
+            } else {
+                Ok( MappedRegion {
+                    _fd: fd,
+                    ptr: address as *mut u8,
+                    sz: sz,
+                })
+            }
+        }
+        Err(e) => { Err(e) }
+    }
+}
+#[test]
+fn test_mmap() {
+    use std::os::unix::fs::MetadataExt;
+    if let Ok(m) = std::fs::metadata("Cargo.toml") {
+        match MappedRegion::mmap("Cargo.toml") {
+            Ok(mr) => {
+                assert_eq!(mr.get_slice().len(), m.size() as usize);
+                match mr.get_str() {
+                    Ok(s) => {
+                        assert_eq!( unwrap!( s.lines().nth(0) ), "[package]");
+                    }
+                    Err(e) => { panic!(e); }
+                }
+            }
+            Err(e) => { panic!(e); }
+        }
+    } else {
+        panic!("cannot get metadata for Cargo.toml");
+    }
+}
