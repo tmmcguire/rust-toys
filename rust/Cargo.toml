@@ -10,27 +10,6 @@ rpath            = false
 lto              = true   # ?
 debug-assertions = false
 
-[[bin]]
-name="mk_anadict"
-
-[[bin]]
-name="mk_anadict_traits"
-
-[[bin]]
-name="anagrams-hashmap"
-
-[[bin]]
-name="anagrams-djbhashmap"
-
-[[bin]]
-name="anagrams-vectors"
-
-[[bin]]
-name="hashing-performance"
-
-[[bin]]
-name="complex"
-
 [dependencies.combinations]
 path = "components/combinations"
 
@@ -40,5 +19,8 @@ path = "components/djbhashmap"
 [dependencies.bisect]
 path = "components/bisect"
 
+[dependencies.mmap]
+path = "components/mmap"
+
 [dependencies]
-time = "0.1.24"
+time = "0.1"
