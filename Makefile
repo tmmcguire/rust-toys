@@ -52,4 +52,4 @@ clean :
 	rm -f $(PROGS) results lib*
 
 % : %.nim
-	~/soft/nimrod/nimrod_0.9.4_linux_amd64/bin/nimrod compile -d:release $<
+	/home/mcguire/soft/nimrod/nim-0.13.0/bin/nim compile -d:release $<

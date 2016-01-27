@@ -5,10 +5,10 @@ import tables
 import sequtils
 
 # From Tutorial II
-template withFile(f: expr, filename: string, mode: TFileMode, body: stmt): stmt {.immediate.} =
+template withFile(f: expr, filename: string, mode: FileMode, body: stmt): stmt {.immediate.} =
   block:
     let fn = filename
-    var f: TFile
+    var f: File
     if open(f, fn, mode):
       try:
         body

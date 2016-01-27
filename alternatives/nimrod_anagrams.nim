@@ -4,7 +4,7 @@ import tables
 import sets
 import os
 import sequtils
-import nimprof
+# import nimprof
 
 iterator eachCombination[T](values : openarray[T], r : int) : seq[T] =
     let length = values.len
@@ -51,12 +51,12 @@ proc seqToString(seq : openarray[char]) : string =
   for i,ch in seq: result[i] = ch
   return result
 
-proc loadDictionary() : TTable[seq[char],seq[string]] =
-  var result = initTable[seq[char],seq[string]]()
+proc loadDictionary() : Table[seq[char],seq[string]] =
+  var tbl = initTable[seq[char],seq[string]]()
   for line in "anadict.txt".lines:
     var words = line.split
-    result[stringToSeq(words[0])] = words[1..words.len - 1]
-  return result
+    tbl[stringToSeq(words[0])] = words[1..words.len - 1]
+  return tbl
 
 when isMainModule:
   if os.paramCount() == 1:
