@@ -5,3 +5,8 @@ anadict.txt*
 Cargo.lock
 nimcache
 elapsed-times
+alternatives/anagrams-hash
+alternatives/anagrams-vectors
+alternatives/nimrod_anagrams
+pony/anagrams/anagrams
+pony/mk_anadict/mk_anadict
