@@ -114,12 +114,9 @@ class RHMap[K,V,H: HashFunction[K] val]
           break
         elseif dib(i, _hashes(i) and mask) < dib(i, bucket) then
           break
-        else
-          let k = _keys(i) as K
-          if (_hashes(i) == hash) and (H.eq(key, k)) then
-            found = true
-            break
-          end
+        elseif (_hashes(i) == hash) and (H.eq(key, _keys(i) as K)) then
+          found = true
+          break
         end
         i = (i + 1) and mask
       until i == bucket end
@@ -145,8 +142,7 @@ class RHMap[K,V,H: HashFunction[K] val]
         end
         return None
       else
-        let key' = _keys(i) as K
-        if (_hashes(i) == hash) and H.eq(key', k) then
+        if (_hashes(i) == hash) and H.eq(_keys(i) as K, k) then
           _keys(i) = consume k
           let value' = _values(i) = consume v
           _hashes(i) = hash
