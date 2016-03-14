@@ -1,5 +1,4 @@
 use "collections"
-use "debug"
 use "files"
 
 actor Main
@@ -62,7 +61,7 @@ actor Main
       for rune in letters.runes() do
         letters'.push(rune)
       end
-      Lib.sort[U32](letters')
+      Lib2.sort[U32](letters')
       letters'
     end
 
