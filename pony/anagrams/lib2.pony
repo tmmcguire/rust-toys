@@ -1,29 +1,63 @@
 class Lib2
+  """
+  A bag of sorting functionality, 2nd edition: using a comparison function.
+  """
 
   fun sort[T: Comparable[T] val](a: Array[box->T] ref) =>
+    """
+    Sort the array a using the natural comparison between elements.
+    """
     sort_with[T](lambda(l: box->T!, r: box->T!): Compare => l.compare(r) end, a)
 
   fun sort_with[T](cmp: {(box->T!, box->T!): Compare} val, a: Array[box->T] ref) =>
-    try _quicksort_with[T](cmp, a, 0, a.size() - 1) end
+    """
+    Sort the array a using a comparison function cmp,
+    which takes two elements of a and returns Less | Equal| Greater.
+    """
+    try _quicksort[T](cmp, a, 0, a.size() - 1) end
 
-  fun _quicksort_with[T](cmp: {(box->T!, box->T!): Compare} val, a: Array[box->T] ref, left: USize val, right: USize val) ? =>
-    let pivot = _find_pivot_with[T](cmp, a, left, right)
-    (let i, let j) = _bentley_mcilroy_with[T](cmp, a, pivot, left, right)
+  fun _quicksort[T](cmp: {(box->T!, box->T!): Compare} val, a: Array[box->T] ref, left: USize val, right: USize val) ? =>
+    """
+    Recursive Quicksort implementation using a median-of-three pivot value and
+    the Bentley-McIlroy three-way partitioning function. (For arrays with large
+    numbers of duplicate keys, three-way partitioning *may* reduce the running
+    time of the sort to linear.)
+
+    For reference, see *Algorithms* by Robert Sedgewick and Kevin Wayne or the
+    following:
+
+    * http://algs4.cs.princeton.edu/23quicksort/
+
+    * http://algs4.cs.princeton.edu/lectures/23Quicksort.pdf
+
+    * https://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf
+
+    * http://algs4.cs.princeton.edu/23quicksort/QuickX.java.html (An optimized
+    version using B-M partitioning, Tukey's ninther (pivoting on a
+    median-of-nine), and a cutoff to insertion sort.)
+    """
+    let pivot = _find_pivot[T](cmp, a, left, right)
+    (let i, let j) = _bentley_mcilroy[T](cmp, a, pivot, left, right)
     if left < j then
-      _quicksort_with[T](cmp, a, left, j)
+      _quicksort[T](cmp, a, left, j)
     end
     if i < right then
-      _quicksort_with[T](cmp, a, i, right)
+      _quicksort[T](cmp, a, i, right)
     end
 
-  fun _find_pivot_with[T](cmp: {(box->T!, box->T!): Compare} val, ary: Array[box->T] box, left: USize val, right: USize val): box->T ? =>
+  fun _find_pivot[T](cmp: {(box->T!, box->T!): Compare} val, ary: Array[box->T] box, left: USize val, right: USize val): box->T ? =>
+    """
+    Return the median-of-three values in the array: the first element, the
+    midpoint, and the last element. Ideally, this avoids the O(n^2) behavior of
+    simple Quicksort.
+    """
     let mid = (left + right) / 2
     let a = ary(left)
     let b = ary(right)
-    let median = _maxw[box->T](cmp, _minw[box->T](cmp, a, b), _minw[box->T](cmp, ary(mid), _maxw[box->T](cmp, a, b)))
+    let median = _max[box->T](cmp, _min[box->T](cmp, a, b), _min[box->T](cmp, ary(mid), _max[box->T](cmp, a, b)))
     median
 
-  fun _minw[U](cmp: {(U!,U!): Compare} val, a: U, b: U): U =>
+  fun _min[U](cmp: {(U!,U!): Compare} val, a: U, b: U): U =>
     match cmp(a, b)
     | Less => a
     | Greater => b
@@ -31,7 +65,7 @@ class Lib2
       b
     end
 
-  fun _maxw[U](cmp: {(U!,U!): Compare} val, a: U, b: U): U =>
+  fun _max[U](cmp: {(U!,U!): Compare} val, a: U, b: U): U =>
     match cmp(a, b)
     | Less => b
     | Greater => a
@@ -39,7 +73,18 @@ class Lib2
       a
     end
 
-  fun _bentley_mcilroy_with[T](cmp: {(box->T!,box->T!): Compare} val, a: Array[box->T] ref, pivot: box->T, left: USize val, right: USize val): (USize val, USize val) ? =>
+  fun _bentley_mcilroy[T](cmp: {(box->T!,box->T!): Compare} val, a: Array[box->T] ref, pivot: box->T, left: USize val, right: USize val): (USize val, USize val) ? =>
+    """
+    Rearrange the elements of the array a so that all of the elements between
+    left and j are less than the pivot value, all of the elements between j and
+    i are equal to the pivot, and all of the elements between i and right are
+    greater than the pivot. Separating out the equal elements allows Quicksort
+    to avoid recursing on them.
+
+    For more information:
+
+    * http://algs4.cs.princeton.edu/lectures/23DemoPartitioning.pdf
+    """
     var p = left
     var i = left
     var j = right
