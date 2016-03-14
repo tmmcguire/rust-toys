@@ -1,5 +1,4 @@
 use "collections"
-use "debug"
 
 type ArrayHashMap is RHMap[Array[U32],Array[String],ArrayHashFcn[U32] val]
 
@@ -9,7 +8,6 @@ primitive ArrayHashFcn[T: (Hashable #read & Equatable[T] #read)] is HashFunction
     for v in x.values() do
       h = h xor v.hash()
     end
-    Debug(["h", h.string()])
     h
 
   fun eq(x: box->Array[T]!, y: box->Array[T]!): Bool =>

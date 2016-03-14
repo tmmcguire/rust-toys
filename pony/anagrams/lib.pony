@@ -16,18 +16,18 @@ class Lib
       _quicksort[T](a, i, right)
     end
 
-  fun _min[T: Comparable[T] val](a: T, b: T): T =>
-    if a < b then a else b end
-
-  fun _max[T: Comparable[T] val](a: T, b: T): T =>
-    if a < b then b else a end
-
   fun _find_pivot[T: Comparable[T] val](ary: Array[T] box, left: USize val, right: USize val): T ? =>
     let mid = (left + right) / 2
     let a = ary(left)
     let b = ary(right)
     let median = _max[T](_min[T](a,b), _min[T](ary(mid), _max[T](a,b)))
     median
+
+  fun _min[T: Comparable[T] val](a: T, b: T): T =>
+    if a < b then a else b end
+
+  fun _max[T: Comparable[T] val](a: T, b: T): T =>
+    if a < b then b else a end
 
   fun _bentley_mcilroy[T: Comparable[T] val](a: Array[T] ref, pivot: T, left: USize val, right: USize val): (USize val, USize val) ? =>
     var p = left
