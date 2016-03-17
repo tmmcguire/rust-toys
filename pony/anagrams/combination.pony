@@ -49,12 +49,9 @@ class Combination[T]
     end
     combination'
 
-trait Fn[T]
-  fun ref apply(combination: Array[val->T!])?
-
 class EachCombination
 
-  fun apply[T](values: Array[T] val, r: USize, fn: Fn[T] ref) ? =>
+  fun apply[T](values: Array[T] val, r: USize, fn: {ref (Array[val->T!])}) ? =>
     let length = values.size()
     if (r == 0) or (r > length) then
       return
