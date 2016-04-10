@@ -18,9 +18,9 @@ class RHMap[K,V,H: HashFunction[K] val]
   let _lf_denominator: USize = 10
   var _size: USize = 0
   var _valid: Array[U64]
+  var _hashes: Array[USize]
   var _keys: Array[(K | None)]
   var _values: Array[(V | None)]
-  var _hashes: Array[USize]
 
   new create(prealloc: USize = 6) =>
     let len = ((prealloc * _lf_denominator) / _lf_numerator).ponyint_next_pow2().max(8)
@@ -44,7 +44,7 @@ class RHMap[K,V,H: HashFunction[K] val]
   fun space(): USize =>
     (_keys.size() * _lf_numerator) / _lf_denominator
 
-  fun has_key(k: box->K!): Bool =>
+  fun contains(k: box->K!): Bool =>
     (_, let found: Bool) = _search(k)
     found
 
@@ -57,7 +57,8 @@ class RHMap[K,V,H: HashFunction[K] val]
     end
 
   fun ref update(key: K, value: V): (V^ | None) =>
-    try _update(consume key, consume value) end
+    let hash = H.hash(key).usize()
+    try _update(consume key, consume value, hash) end
 
   fun ref insert(key: K, value: V): V ? =>
     let k = key
@@ -123,35 +124,35 @@ class RHMap[K,V,H: HashFunction[K] val]
     end
     (i, found)
 
-  fun ref _update(key: K, value: V): (V^ | None) ? =>
+  fun ref _update(key: K, value: V, hash: USize): (V^ | None) ? =>
     let mask = _keys.size() - 1
     var k = consume key
     var v = consume value
-    var hash = H.hash(k).usize()
-    var bucket = hash and mask
+    var hash' = hash
+    var bucket = hash' and mask
     var i = bucket
     repeat
       if not _is_valid(i) then
         _toggle_valid(i)
         _keys(i) = consume k
         _values(i) = consume v
-        _hashes(i) = hash
+        _hashes(i) = hash'
         _size = _size + 1
         if _size > space() then
           _resize()
         end
         return None
       else
-        if (_hashes(i) == hash) and H.eq(_keys(i) as K, k) then
+        if (_hashes(i) == hash') and H.eq(_keys(i) as K, k) then
           _keys(i) = consume k
           let value' = _values(i) = consume v
-          _hashes(i) = hash
+          _hashes(i) = hash'
           return value' as V^
         elseif dib(i, _hashes(i) and mask) < dib(i, bucket) then
           k = (_keys(i) = consume k) as K^
           v = (_values(i) = consume v) as V^
-          hash = _hashes(i) = hash
-          bucket = hash and mask
+          hash' = _hashes(i) = hash'
+          bucket = hash' and mask
         end
       end
       i = (i + 1) and mask
@@ -160,19 +161,19 @@ class RHMap[K,V,H: HashFunction[K] val]
 
   fun ref _resize() =>
     try
-      var new_map = RHMap[K,V,H].create( (_size - 1) * 2 )
+      var new_map = RHMap[K,V,H].create(_size * 2)
       for i in Range(0, _keys.size()) do
         if _is_valid(i) then
           let k = (_keys(i) = None) as K^
           let v = (_values(i) = None) as V^
-          new_map._update(consume k, consume v)
+          new_map._update(consume k, consume v, _hashes(i))
         end
       end
       _size = new_map._size = _size
       _valid = new_map._valid = _valid
       _keys = new_map._keys = _keys
       _values = new_map._values = _values
-      _hashes= new_map._hashes = _hashes
+      _hashes = new_map._hashes = _hashes
     end
 
   fun _stop(initial: USize): USize ? =>
