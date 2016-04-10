@@ -20,9 +20,20 @@ actor Main
         env.out.print("cannot read anadict.txt")
         return
       end
-    env.out.print(dictionary.size().string())
+    env.out.print(dictionary.size().string() + " " + dictionary.space().string())
     for i in Range(0, letters.size() + 1) do
 
+      // 71.9 sec
+      // for combo in Combination[U32](letters, i) do
+      //   try
+      //     let words = dictionary(combo)
+      //     for word in words.values() do
+      //       set.set(word)
+      //     end
+      //   end
+      // end
+
+      // 8.5 sec
       // for combo in Combination[U32](letters, i) do
       //   if dictionary.has_key(combo) then
       //     try
@@ -34,22 +45,37 @@ actor Main
       //   end
       // end
 
+      // 6.5 sec
+      // try
+      //   EachCombination[U32](letters, i,
+      //     object is Fn[U32]
+      //       let dictionary': ArrayHashMap val = dictionary
+      //       var set': Set[String] ref = set
+      //       fun ref apply(combo: Array[U32]) =>
+      //         if dictionary'.has_key(combo) then
+      //           try
+      //             let words = dictionary'(combo)
+      //             for word in words.values() do
+      //               set'.set(word)
+      //             end
+      //           end
+      //         end
+      //     end
+      //   )
+      // end
+
+      // 6.5 sec
       try
         EachCombination[U32](letters, i,
-          object is Fn[U32]
-            let dictionary': ArrayHashMap val = dictionary
-            var set': Set[String] ref = set
-            fun ref apply(combo: Array[U32]) =>
-              if dictionary'.has_key(combo) then
-                try
-                  let words = dictionary'(combo)
-                  for word in words.values() do
-                    set'.set(word)
-                  end
-                end
+        lambda ref (combo:Array[U32])(d=dictionary,set) =>
+          if d.contains(combo) then
+            try
+              for word in d(combo).values() do
+                set.set(word)
               end
+            end
           end
-        )
+        end)
       end
 
     end
@@ -65,13 +91,13 @@ actor Main
       letters'
     end
 
-  fun read_dictionary(env: Env, path: String): ArrayHashMap val ? =>
+  fun read_dictionary(env: Env, path: String): RHMap[Array[U32],Array[String],HashSeq[U32]] val ? =>
     recover
-      let d = ArrayHashMap()
+      let d = RHMap[Array[U32],Array[String],HashSeq[U32]]
       let caps: FileCaps val = recover val FileCaps.set(FileRead).set(FileStat) end
       var file: (None val | File ref) = None
       try
-        file = File.open( FilePath(env.root, path, caps) )
+        file = File.open( FilePath(env.root as AmbientAuth, path, caps) )
         if (file as File).errno() isnt FileOK then
           error
         end
