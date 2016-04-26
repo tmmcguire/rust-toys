@@ -1,6 +1,14 @@
 use "collections"
 use "files"
 
+class ToStr
+  fun to_str(ary: Array[U32] box): String val =>
+    let str = recover String end
+    for v in ary.values() do
+      str.append(recover val String.from_utf32(v) end)
+    end
+    recover val str end
+
 actor Main
   let empty: Array[String] val = recover Array[String] end
   let set: Set[String] ref = Set[String]
