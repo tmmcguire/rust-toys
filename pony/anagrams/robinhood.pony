@@ -44,7 +44,7 @@ class RHMap[K,V,H: HashFunction[K] val]
   fun apply(k: box->K!): this->V ? =>
     (let i: USize, let found: Bool) = _search(k)
     if found then
-      return (_pairs(i) as (K,V))._2 as this->V
+      return (_pairs(i) as (this->K, this->V))._2
     else
       error
     end
